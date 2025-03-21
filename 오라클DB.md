@@ -617,7 +617,18 @@ sqlplus는 오라클 데이터베이스 접속용 프로그램으로 오라클 �
 
      SYSTEM 계정으로 접속한 뒤, 다음 명령어를 실행하여 SCOTT 계정을 생성하고 활성화할 수 있다.
 
-     1. 계정 생성
+     1. 계정 생성(루트 컨테이너에서 작업 및 특정 PDB에서 작업)
+
+        ```SQL
+        ALTER SESSION SET CONTAINER = CDB$ROOT;
+        CREATE USER C##SCOTT IDENTIFIED BY 0000 CONTAINER=ALL;
+        GRANT CONNECT, RESOURCE TO C##SCOTT CONTAINER=ALL;
+        ```
+
+        ```SQL
+        ALTER SESSION SET CONTAINER = <PDB_NAME>;
+        GRANT UNLIMITED TABLESPACE TO C##SCOTT;
+        ```
 
         ```SQL
         CREATE USER C##SCOTT IDENTIFIED BY tiger;
@@ -657,7 +668,131 @@ sqlplus는 오라클 데이터베이스 접속용 프로그램으로 오라클 �
            ```
 
            여기서 utlsampl.sql의 scott 패스워드가 tiger로 되어있으므로 이를 0000으로 변경해준다.
-        
+
+           ※ cf) : scott.sql 스크립트 실행 시 컨테이너 참조 범위 확인
+
+           ```SQL
+           ALTER SESSION SET CONTAINER = CDB$ROOT;
+           GRANT CONNECT,RESOURCE,UNLIMITED TABLESPACE TO C##SCOTT IDENTIFIED BY 0000 CONTAINER = ALL;
+           ALTER USER C##SCOTT DEFAULT TABLESPACE USERS;
+           ALTER USER C##SCOTT TEMPORARY TABLESPACE TEMP;
+           CONNECT C##SCOTT/0000
+           ...
+           ```
+
+           * 데이터베이스 컨테이너
+
+             Oracle Database의 멀티테넌트 아키텍처에서 도입된 개념으로, 여러 데이터베이스를 효율적으로 관리하고 통합하기 위한 프레임워크. 쉽게 말하면, 컨테이너는 데이터를 담는 "큰 그릇"처럼 작동하며, 그 안에 여러 데이터베이스(PDB)를 개별적으로 담을 수 있다.
+
+             * 데이터베이스 컨테이너의 주요 특징
+
+               1. 루트 컨테이너(CDB$ROOT)(CDB : Container Database)
+
+                  * 모든 PDB가 공유하는 공통 구성 요소(예 : 데이터 딕셔너리, 시스템 데이터)와 인프라를 포함
+
+                    > cf) : 데이터 딕셔너리란?
+                    >
+                    > * 정의
+                    >
+                    >   데이터베이스의 모든 구조와 객체에 대한 정보를 저장하는 시스템 데이터베이스이다.
+                    >
+                    > * 목적
+                    >
+                    >   DBMS가 데이터베이스를 관리하고 운영하기 위해 필요한 메타데이터(데이터에 대한 데이터)를 저장한다.
+                    >
+                    > * 구성 요소
+                    >
+                    >   * 테이블, 뷰, 인덱스, 사용자, 권한 등 데이터베이스 구조와 관련된 정보를 포함한다.
+                    >
+                    >     ex) 테이블의 이름과 컬럼, 데이터 타입, 키 제약 조건, 데이터 크기 등.
+                    >
+                    > * 주요 특징
+                    >
+                    >   1. 자동 생성 및 유지
+                    >      * 데이터베이스를 생성하거나 변경할 때 데이터 딕셔너리도 자동으로 업데이트된다.
+                    >   2. 시스템 관리용
+                    >      * DBA(Database Administrator)나 시스템 데이터베이스를 관리하는 데 활용한다.
+                    >   3. 읽기 전용
+                    >      * 일반 사용자에게는 읽기 전용이며, 직접 수정할 수 없다.
+                    >   4. 뷰 제공
+                    >      * 사용자는 `USAR_`, `ALL_`, `DBA_`로 시작하는 뷰를 통해 데이터 딕셔너리 정보를 확인할 수 있다.
+                    >
+                    > * 예시
+                    >
+                    >   1. USER_TABLES
+                    >
+                    >      * 사용자가 소유한 테이블 목록을 제공한다.
+                    >
+                    >        ```SQL
+                    >        SELECT * FROM USER_TABLES;
+                    >        ```
+                    >
+                    >   2. ALL_OBJECTS
+                    >
+                    >      * 사용자가 접근할 수 있는 데이터베이스 객체(테이블, 뷰, 인덱스 등) 목록을 제공한다.
+                    >
+                    >   3. DBA_USERS
+                    >
+                    >      * 모든 데이터베이스 사용자 계정 정보를 보여준다(관리자만 접근 가능).
+
+                  * 데이터베이스 관리자가 주요 설정과 작업(예 : 패치 적용, 업그레이드)을 수행하는 공간
+
+               2. 플러그형 데이터베이스(PDB : Pluggable Database)
+
+                  * 컨테이너 안에 있는 개별 데이터베이스로, 각 PDB는 독립적으로 운영될 수 있다.
+                  * 서로 분리되어 있어, 하나의 PDB가 문제가 생겨도 다른 PDB에 영향을 주지 않는다.
+
+               3. 컨테이너 관리의 장점
+
+                  * 데이터베이스 통합
+
+                    여러 PDB를 하나의 컨테이너로 관리하여 리소스를 효율적으로 사용한다.
+
+                  * 유연성
+
+                    PDB를 쉽게 플러그(삽입)하거나 언플러그(제거)할 수 있어, 다른 환경으로 이동이 가능하다.
+
+                  * 중앙화된 관리
+
+                    CDB 수준에서 보안 정책, 업데이트, 백업 등을 통합 관리한다.
+
+                  * 공유와 독립성
+
+                    CDB는 여러 PDB가 공유하는 시스템 인프라를 제공하지만, 각 PDB는 독립적으로 관리된다. 예를 들어, 특정 PDB를 업그레이드하거나 이전하더라도 다른 PDB에 영향을 주지 않는다.
+
+                  * 보안 및 권한 관리
+
+                    * CDB 수준에서는 DBA가 전체 데이터베이스의 보안 정책과 권한을 설정한다.
+                    * PDB 내부에서는 각 PDB 관리자(Local DBA)가 사용자와 데이터를 독립적으로 관리한다.
+
+             * CDB 아키텍처의 작동 흐름
+
+               1. 클라이언트 요청이 들어오면 CDB는 요청을 처리할 올바른 PDB로 라우팅한다.
+               2. PDB는 요청에 따라 개별 데이터를 처리하고 결과를 반환한다.
+               3. 모든 시스템 수준 관리 작업(예 : 백업, 패치)은 CDB 루트에서 실행되며, 필요한 경우 각 PDB에 적용된다.
+
+             * CDB 아키텍처의 시각적 예시
+
+               ```
+               CDB (컨테이너 데이터베이스)
+               ├── CDB$ROOT (루트 컨테이너)
+               │    ├── 시스템 데이터
+               │    ├── 공통 데이터 딕셔너리
+               │    ├── 공통 사용자 계정
+               │
+               ├── PDB1 (플러그형 데이터베이스 1)
+               │    ├── 사용자 데이터
+               │    ├── 고유 스키마
+               │
+               ├── PDB2 (플러그형 데이터베이스 2)
+               │    ├── 사용자 데이터
+               │    ├── 고유 스키마
+               │
+               └── PDBn (플러그형 데이터베이스 n)
+                    ├── 사용자 데이터
+                    ├── 고유 스키마
+               ```
+
         3. 이 스크립트는 SCOTT 계정에 예제 테이블 데이터를 삽입한다.
 
    * 존재할 경우 - SCOTT 계정을 사용할 수 있도록 설정하기
@@ -900,17 +1035,283 @@ String sql = "SELECT ENAME, SAL, SAL*12+COMM AS ANNSAL, COMM FROM EMP";
 String sql = "SELECT ENAME, SAL, SAL*12+COMM AS "ANNSAL", COMM FROM EMP";
 ```
 
-
-
 ## ORDER BY
+
+```
+SELECT [조회할 열1 이름], [열2 이름], ... , [열N 이름]
+FROM [조회할 테이블 이름]
+.
+.
+.
+ORDER BY [정렬하려는 열 이름(여러 열 지정 가능)] [정렬 옵션];
+```
+
+cf) : 정렬 옵션
+
+* 오름차순 : ASC(defalt)
+* 내림차순 : DESC
+
+### 오름차순 사용하기
+
+```SQL
+SELECT *
+FROM EMP
+ORDER BY SAL;
+```
+
+### 내림차순 사용하기
+
+```SQL
+SELECT *
+FROM EMP
+ORDER BY SAL DESC;
+```
+
+### 각각의 열에 내림차순과 올림차순 동시에 사용하기
+
+ORDER BY절에는 우선순위를 고려하여 여러 개의 정렬 기준을 지정할 수 있다. 예를 들어 부서 번호(DEPTNO)를 오름차순으로 정렬하고, 부서 번호가 같은 사원일 경우 급여(SAL)를 기준으로 내림차순으로 정렬할 수도 있다. 
+
+```SQL
+SELECT *
+FROM EMP
+ORDER BY DEPTNO ASC, SAL DESC;
+```
 
 # WHERE절과 연산자
 
 ## WHERE절
 
+WHERE절은 SELECT문으로 데이터를 조회할 때 특정 조건을 기준으로 원하는 행을 출력하는 데 사용한다. 그리고 여러 연산자를 함께 사용하면 더욱 세밀하게 데이터 검색을 할 수 있다.
+
+```SQL
+SELECT [조회할 열1 이름], ... , [열N이름]
+FROM [조회할 테이블 이름]
+WHERE [조회할 행을 선별하기 위한 조건식];
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE DEPTNO = 30;
+```
+
 ## AND, OR 연산자
 
+```SQL
+SELECT *
+FROM EMP
+WHERE DEPTNO = 30
+AND JOB = 'SALEMAN';
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE DEPTNO = 30
+OR JOB = 'CLERK';
+```
+
+### WHERE절 조건식의 개수
+
+```SQL
+SELECT *
+FROM EMP
+WHERE [조건식1]
+AND [조건식2]
+OR [조건식3]
+...
+AND [조건식N]
+```
+
 ## 연산자 종류와 활용법
+
+### 산술 연산자
+
+```SQL
+SELECT *
+FROM EMP
+WHERE SAL * 12 = 36000;
+```
+
+### 비교 연산자
+
+**대소 비교 연산자**
+
+```SQL
+SELECT *
+FROM EMP
+WHERE SAL >= 3000;
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE ENAME >= 'F'
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE ENAME <= 'FORZ';
+```
+
+**등가 비교 연산자**
+
+| 연산자 | 사용법 | 의미                                               |
+| ------ | ------ | -------------------------------------------------- |
+| =      | A = B  | A 값이 B 값과 같을 경우 true, 다를 경우 false 반환 |
+| !=     | A != B | A 값과 B 값이 다를 경우 true, 같을 경우 false 반환 |
+| <>     | A <> B | ``                                                 |
+| ^=     | A ^= B | ``                                                 |
+
+만약 급여가 3000이 아닌 사원의 데이터를 조회할 때 다음과 같이 select문을 작성할 수 있다. '같지 않다'는 의미로 사용할 수 있는 세 가지 방식 모두 같은 결과 값을 출력한다.
+
+```SQL
+SELECT *
+FROM EMP
+WHERE SAL != 3000;
+```
+
+```sql
+SELECT *
+FROM EMP
+WHERE SAL <> 3000;
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE SAL ^= 3000;
+```
+
+### 논리 부정 연산자
+
+만약 A값이 TRUE일 경우 논리 부정 연산자의 결과 값은 FALSE가 된다. 반대로 A 값이 FALSE인 경우에 논리 부정 연산자의 결과 값은 TRUE가 된다.
+
+```SQL
+SELECT *
+FROM EMP
+WHERE NOT SAL = 3000;
+```
+
+복잡한 여러 개 조건식이 AND, OR로 묶여 있는 상태에서 정반대 결과를 얻고자 할 때에는 유용하게 사용할 수 있다. 복잡한 조건식에서 정반대의 최종 결과를 원할 때, 조건식을 일일이 수정하여 작성하는 것보다 NOT 연산자로 한 번에 뒤집에서 사용하는 것이 간편하고 SQL문 작성 시간도 줄일 수 있다. 
+
+```SQL
+SELECT *
+FROM EMP
+WHERE NOT (DEPTNO = 10 AND JOB = 'MANAGER');
+```
+
+### IN 연산자
+
+= 기호는 WHERE 조건식에서 특정 열 데이터 값만을 조회하고자 할 때 사용한다. 앞에서 살펴본 예제에서 급여 열이 3000인 사원, 직업 열이 CLERK인 사원, 부서 번호 열이 30인 사원 등으로 조회한 SELECT문이 이에 해당한다. 만약 지금까지 배운 연산자를 사용하여 직책 열이 SALESMAN이거나 MANAGER 또는 CLERK 중 하나인 데이터를 조회하려면 다음과 같이 논리 연산자 OR를 사용해서 출력할 수 있다.
+
+```SQL
+SELECT *
+FROM EMP
+WHERE JOB = 'MANAGER'
+   OR JOB = 'SALESMAN'
+   OR JOB = 'CLERK';
+```
+
+출력하고 싶은 열의 조건이 여러 가지일 때 OR 연산자로 여러 조건식을 묶어 주는 것도 하나의 방법이지만, 조건이 늘어날수록 조건식을 많이 작성해야 하기 때문에 조금 번거롭다.
+
+이때 IN 연산자를 사용하면 특정 열에 해당하는 조건을 여러 개 지정할 수 있다. IN 연산자의 기본 형식은 다음과 같다.
+
+```SQL
+SELECT [조회할 열1 이름], [열2 이름], [열N 이름]
+FROM [조회할 테이블 이름]
+WHERE 열 이름 IN (데이터1, 데이터2, ..., 데이터N);
+```
+
+| 키워드 | 필수 요소                       | 선택 요소 | 설명                                             |
+| ------ | ------------------------------- | --------- | ------------------------------------------------ |
+| IN     | 열 이름 조회할 열의 데이터 목록 |           | 특정 열에 포함된 데이터를 여러 개 조회할 때 사용 |
+
+```SQL
+SELECT *
+FROM EMP
+WHERE JOB IN ('MANAGER', 'SALESMAN', 'CLERK');
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE JOB NOT IN ('MANAGER', 'SALESMAN', 'CLERK');
+```
+
+### BETWEEM A AND B 연산자
+
+```SQL
+SELECT [조회할 열1 이름], ... , [열N 이름]
+FROM [조회할 테이블 이름]
+WHERE 열 이름 BETWEEN 최솟값 AND 최댓값;
+```
+
+| 키워드          | 필수 요소               | 선택 요소 | 설명                                   |
+| --------------- | ----------------------- | --------- | -------------------------------------- |
+| BETWEEN A AND B | 열 이름, 최솟값, 최댓값 |           | 일정 범위 내의 데이터를 조회할 때 사용 |
+
+```SQL
+SELECT *
+FROM EMP
+WHERE SAL BETWEEN 2000 AND 3000;
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE SAL NOT BETWEEN 2000 AND 3000;
+```
+
+### LIKE 연산자와 와일드 카드
+
+LIKE 연산자는 이메일이나 게시판 제목 또는 내용 검색 기능처럼 일부 문자열이 포함된 데이터를 조회할 때 사용한다.
+
+```SQL
+SELECT *
+FROM EMP
+WHERE ENAME LIKE 'S%';
+```
+
+와일드 카드는 특정 문자 또는 문자열을 대체하거나 문자열 데이터의 패턴을 표기하는 특수 문자이다. LIKE 연산자와 함께 사용할 수 있는 와일드 카드는 _와 %이다.
+
+| 종류 | 의미                                                         |
+| ---- | ------------------------------------------------------------ |
+| _    | 어떤 값이든 상관없이 한 개의 문자 데이터를 의미              |
+| %    | 길이와 상관없이(문자 없는 경우도 포함) 모든 문자 데이터를 의미 |
+
+```SQL
+SELECT *
+FROM EMP
+WHERE ENAME LIKE '_L%';
+```
+
+```sql
+SELECT *
+FROM EMP
+WHERE ENAME LIKE '%AM%';
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE ENAME NOT LIKE '%AM%';
+```
+
+**와일드 카드 문자가 데이터 일부일 경우**
+
+```SQL
+SELECT *
+FROM SOME_TABLE
+WHERE SOME_COLUMN LIKE 'A\_A%' ESCAPE '\';
+```
+
+
+
+
+
+
 
 # 데이터 처리와 가공을 위한 오라클 함수
 
