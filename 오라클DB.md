@@ -1900,7 +1900,120 @@ FROM DUAL;
 010-1234-5678	010 1234 5678	01012345678
 ```
 
+### 두 문자열 데이터를 합치는 CONCAT 함수
 
+CONCAT 함수는 두 개의 문자열 데이터를 하나의 데이터로 연결해 주는 역할을 한다. 두 개의 입력 데이터 지정을 하고 열이나 문자열 데이터 모두 지정할 수 있다. 
+
+```SQL
+SELECT CONCAT(EMPNO, ENAME),
+	   CONCAT(EMPNO, CONCAT(' : ', ENAME))
+FROM EMP
+WHERE ENAME = 'SCOTT';
+```
+
+```
+7839KING	7839 : KING
+```
+
+**문자열 데이터를 연결하는 || 연산자**
+
+|| 연산자는 CONCAT 함수와 유사하게 열이나 문자열을 연결한다. 
+
+```SQL
+SELECT EMPNO || ENAME,
+	   EMPNO || ' : ' || ENAME
+FROM EMP;
+```
+
+```
+7369SMITH	7369 : SMITH
+7499ALLEN	7499 : ALLEN
+7521WARD	7521 : WARD
+7566JONES	7566 : JONES
+7654MARTIN	7654 : MARTIN
+7698BLAKE	7698 : BLAKE
+7782CLARK	7782 : CLARK
+7839KING	7839 : KING
+7844TURNER	7844 : TURNER
+7900JAMES	7900 : JAMES
+7902FORD	7902 : FORD
+7934MILLER	7934 : MILLER
+```
+
+### TRIM, LTRIM, RTRIM 함수
+
+TRIM, LTRIM, RTRIM 함수는 문자열 데이터 내에서 특정 문자를 지우기 위해 사용한다. 원본 문자열 데이터를 제외한 나머지 데이터는 모두 생략할 수 있다. 삭제할 문자가 생략될 경우에 기본적으로 공백을 제거한다. 그리고 삭제 옵션은 왼쪽에 있는 글자를 지우는 LEADING, 오른쪽에 있는 글자를 지우는 TRAILING, 양쪽의 글자를 모두 지우는 BOTH를 사용한다.
+
+**TRIM 함수의 기본 사용법**
+
+```SQL
+TRIM([삭제 옵션(선택)] [삭제할 문자(선택)] FROM [원본 문자열 데이터(필수)])
+```
+
+TRIM 함수의 삭제할 문자는 필수가 아니므로 지정하지 않아도 된다. 삭제할 문자가 없으면 공백이 제거된다.
+
+**TRIM 함수 사용하기(삭제할 문자가 없을 때)**
+
+```SQL
+SELECT '[' || TRIM(' __Oracle__ ') || ']' AS TRIM,
+	   '[' || TRIM(LEADING FROM ' __Oracle__ ') || ']' AS TRIM_LEADING,
+	   '[' || TRIM(TRAILING FROM ' __Oracle__ ') || ']' AS TRIM_TRAILING,
+	   '[' || TRIM(BOTH FROM ' __Oracle__ ') || ']' AS TRIM_BOTH
+FROM DUAL;
+```
+
+```
+[__Oracle__]	[__Oracle__ ]	[ __Oracle__]	[__Oracle__]
+```
+
+**TRIM 함수 사용하기(삭제할 문자가 있을 때)**
+
+```SQL
+SELECT '[' || TRIM('_' FROM '__Oracle__') || ']' AS TRIM,
+	   '[' || TRIM(LEADING '_' FROM '__Oracle__') || ']' AS TRIM_LEADING,
+	   '[' || TRIM(TRAILING '_' FROM '__Oracle__') || ']' AS TRIM_TRAILING,
+	   '[' || TRIM(BOTH '_' FROM '__Oracle__') || ']' AS TRIM_BOTH
+FROM DUAL;
+```
+
+```
+[Oracle]	[Oracle__]	[__Oracle]	[Oracle]
+```
+
+**LTRIM, RTRIM 함수의 기본 사용법**
+
+LTRIM, RTRIM 함수는 각각 왼쪽, 오른쪽의 지정 문자를 삭제하는 데 사용한다. TRIM과 마찬가지로 삭제할 문자를 지정하지 않을 경우 공백 문자가 삭제된다. TRIM 함수와 다른 점은 삭제할 문자를 하나만 지정하는 것이 아니라 여러 문자 지정이 가능하다는 것이다.
+
+```SQL
+LTRIM([원본 문자열 데이터(필수)], [삭제할 문자 집합(선택)])
+RTRIM([원본 문자열 데이터(필수)], [삭제할 문자 집합(선택)])
+```
+
+| 함수  | 설명                                                         |
+| ----- | ------------------------------------------------------------ |
+| LTRIM | 원본 문자열의 왼쪽에서 삭제할 문자열을 지정한다(삭제할 문자열을 지정하지 않으면 공백이 삭제됨). |
+| RTRIM | 원본 문자열의 오른쪽에서 삭제할 문자열을 지정한다(삭제할 문자열을 지정하지 않으면 공백이 삭제됨). |
+
+```SQL
+SELECT '[' || TRIM(' _Oracle_ ') || ']' AS TRIM,
+	   '[' || LTRIM(' _Oracle_ ') || ']' AS LTRIM,
+	   '[' || LTRIM('<_Oracle_>', '_<') || ']' AS LTRIM_2,
+	   '[' || RTRIM(' _Oracle_ ') || ']' AS RTRIM,
+	   '[' || RTRIM('<_Oracle_>', '>_') || ']' AS RTRIM_2
+FROM DUAL;
+```
+
+```
+[_Oracle_]	[_Oracle_ ]	[Oracle_>]	[ _Oracle_]	[<_Oracle]
+```
+
+삭제할 문자를 지정하지 않을 경우 각각 함수 종류(TRIM, LTRIM, RTRIM)에 따라 양쪽, 왼쪽, 오른쪽 공백이 제거된다. LTRIM, RTRIM을 사용한 예시에서 삭제 대상이 문자일 경우 해당 문자의 순서와 반복을 통해 만들어 낼 수 있는 모든 조합이 각각 왼쪽, 오른쪽부터 삭제되어 간다. LTRIM_2의 경우 `<_` 문자열이 `_`, `<` 문자의 조합으로 표현 가능한 문자이므로 삭제된다. 하지만 그 다음에 이어지는 Oracle의 O문자에서(RTRIM_2의 경우 e) `_<`로 조합할 수 없는 문자가 시작되므로 이 단계에서 LTRIM을 통한 삭제 작업은 끝나게 된다. 즉 `_<`를 삭제할 문자로 지정하고 원본 문자열이 `<_<_Oracle`일 경우 결과는 Oracle만 남게 된다. 하지만 `<_O<_racle` 문자열은 LTRIM의 결과로 `O<_racle`이 남게 된다.
+
+**LTRIM, RTRIM, TRIM 옵션까지 모두 다 외워야 하나요?**
+
+>문자 삭제를 위한 TRIM, LTRIM, RTRIM 함수는 사용하는 옵션이 많아 까다로워 보일 수 있다. 만약 옵션을 모두 외우기가 어렵다면 우선 LTRIM, RTRIM 함수가 존재하고 있다는 것과 TRIM 함수는 경우에 따라서 문자열 데이터 양쪽의 공백을 제거할 때 사용한다.
+>
+>보통 실무에서 TRIM 함수는 검색 기준이 되는 데이터에 혹시나 들어 있을지도 모르는 양쪽 끝의 공백을 제거할 때 많이 사용한다. 예를 들어 유저가 로그인을 하려고 아이디를 입력했을 때 사용자 실수로 스페이스바가 눌러져 공백이 함께 입력되는 경우이다.
 
 ## 숫자 함수
 
