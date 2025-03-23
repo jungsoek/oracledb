@@ -1307,17 +1307,600 @@ FROM SOME_TABLE
 WHERE SOME_COLUMN LIKE 'A\_A%' ESCAPE '\';
 ```
 
+`A\_A%`에서 `\` 문자 바로 뒤에 있는 _는 와일드 카드 기호로서가 아닌 데이터에 포함된 문자로 인식하라는 의미이다. ESCAPE 문자 `\`는 ESCAPE절에서 지정할 수 있다. 그리고 `\` 외 다른 문자도 지정하여 사용할 수 있다.
 
+**LIKE 연산자와 와일드 카드 문자의 성능**
 
+LIKE 연산자와 와일드 카드를 사용한 SELECT문은 사용하기 간편하고 기능 면에서 활용도가 높지만 데이터 조회 성능과 관련된 의견은 다양하다. 실무에서는 행 수가 상당한 테이블을 여러 개 조합하여 데이터를 조회하는 경우가 많다. 데이터 조회 속도는 제공하려는 서비스 질과 직접적으로 연관되는 일이 빈번하기 때문에 데이터 조회 속도는 매우 중요하다. 
 
+LIKE 연산자와 와일드 카드를 활용한 SELECT문은 와일드 카드를 어떻게 사용하느냐에 따라 데이터를 조회해 오는 시간에 차이가 난다고 알려져 있다. 
 
+### IS NULL 연산자
 
+NULL은 데이터 값이 완전히 '비어 있는' 상태를 말한다. 숫자 0은 값 0이 존재한다는 뜻이므로 NULL과 혼동하지 않도록 주의해야 한다. NULL의 의미를 예를 들어 설명하면 다음과 같다.
+
+```SQL
+SELECT ENAME, SAL, SAL*12+COMM AS ANNSAL, COMM
+FROM EMP;
+```
+
+| 의미               | 예                                                          |
+| ------------------ | ----------------------------------------------------------- |
+| 값이 존재하지 않음 | 통장을 개설한 적 없는 은행 고객의 계좌 번호                 |
+| 해당 사항 없음     | 미혼인 고객의 결혼기념일                                    |
+| 노출할 수 없는 값  | 고객 비밀번호 찾기 같은 열람을 제한해야 하는 특정 개인 정보 |
+| 확정되지 않은 값   | 미성년자의 출신 대학                                        |
+
+따라서 NULL은 '현재' 무슨 값인지 확정되지 않은 상태'이거나 '값 자체가 존재하지 않는 상태'를 나타내는 데이터에 사용한다. 이 때문에 앞에서 살펴본 연산자는 대부분 연산 대상이 NULL일 때 연산 자체가 무의미해지는 현상이 발생한다.
+
+```SQL
+SELECT *
+FROM EMP
+WHERE COMM = NULL;
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE COMM IS NULL;
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE MGR IS NOT NULL;
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE SAL > NULL
+AND COMM IS NULL;
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE SAL > NULL
+OR COMM IS NULL;
+```
+
+**AND 연산 및 결과**
+
+|           | true  | false | NULL  |
+| --------- | ----- | ----- | ----- |
+| **true**  | true  | false | NULL  |
+| **false** | false | false | false |
+| **NULL**  | NULL  | false | NULL  |
+
+**OR 연산 및 결과**
+
+|           | true | false | NULL |
+| --------- | ---- | ----- | ---- |
+| **true**  | true | true  | true |
+| **false** | true | false | NULL |
+| **NULL**  | true | NULL  | NULL |
+
+### 집합 연산자
+
+관계형 데이터베이스 개념은 집합론에서 시작되었다. SQL문에서는 SELECT문을 통해 데이터를 조회한 결과를 하나의 집합과 같이 다룰 수 있는 집합 연산자를 사용할 수 있다. 그리고 두 개 이상의 SELECT문의 결과 값을 연결할 때 사용한다.
+
+```SQL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10
+UNION
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 20;
+```
+
+```
+7782	CLARK	2450	10
+7839	KING	5000	10
+7934	MILLER	1300	10
+7369	SMITH	800	20
+7566	JONES	2975	20
+7902	FORD	3000	20
+```
+
+여기서 주의할 점은 집합 연산자로 두 개의 SELECT문의 결과 값을 연결할 때 각 SELECT문이 출력하려는 열 개수와 각 열의 자료형이 순서별로 일치해야 한다는 것이다. 예를 들어 다음의 집합 연산자를 사용한 두 SELECT문은 모두 실행되지 않는다. 
+
+```SQL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10
+UNION
+SELECT EMPNO, ENAME, SAL
+FROM EMP
+WHERE DEPTNO = 20;
+```
+
+```
+ORA-01789: 질의 블록은 부정확한 수의 결과 열을 가지고 있습니다.
+```
+
+```SQL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10
+UNION
+SELECT ENAME, EMPNO, DEPTNO, SAL
+FROM EMP
+WHERE DEPTNO = 20;
+```
+
+```
+ORA-01790: 대응하는 식과 같은 데이터 유형이어야 합니다
+```
+
+만약 연결하려는 두 SELECT문의 열 개수와 자료형이 같다면 서로 다른 테이블에서 조회하거나 조회하는 열 이름이 다른 것은 문제가 되지 않는다. 다소 이상해보이는 결과가 나오겠지만 집합 연산자를 다음과 같이 사용할 수도 있다.
+
+```SQL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10
+UNION
+SELECT SAL, JOB, DEPTNO, SAL
+FROM EMP
+WHERE DEPTNO = 20;
+```
+
+```
+800	    CLERK	20	800
+2975	MANAGER	20	2975
+3000	ANALYST	20	3000
+7782	CLARK	2450	10
+7839	KING	5000	10
+7934	MILLER	1300	10
+```
+
+EMPNO와 SAL 열은 다른 열이지만 양쪽 다 숫자가 저장된 데이터이기 때문에 문제없이 연결되고 있다. 다른 열도 마찬가지이다. 다만 최종 출력되는 열 이름은 먼저 작성한 SELECT문의 열 이름으로 표기된다는 것에 주의해야 한다.
+
+오라클 데이터베이스에서 사용하는 집합 연산자는 다음과 같이 4가지 종류가 있다.
+
+| 종류      | 설명                                                         |
+| --------- | ------------------------------------------------------------ |
+| UNION     | 연결된 SELECT문의 결과 값을 합집합으로 묶어준다. 결과 값의 중복은 제거된다. |
+| UNION ALL | 연결된 SELECT문의 결과 값을 합집합으로 묶어 준다. 중복된 결과 값도 제거 없이 모두 출력된다. |
+| MINUS     | 먼저 작성한 SELECT문의 결과 값에서 다음 SELECT문의 결과 값을 차집합 처리한다. 먼저 작성한 SELECT문의 결과 값 중 다음 SELECT문에 존재하지 않는 데이터만 출력된다. |
+| INTERSECT | 먼저 작성한 SELECT문과 다음 SELECT문의 결과 값이 같은 데이터만 출력된다. 교집합과 같은 의미이다. |
+
+```SQL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10
+UNION
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10;
+```
+
+```
+7782	CLARK	2450	10
+7839	KING	5000	10
+7934	MILLER	1300	10
+```
+
+```SQL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10
+UNION ALL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10;
+```
+
+```
+7782	CLARK	2450	10
+7839	KING	5000	10
+7934	MILLER	1300	10
+7782	CLARK	2450	10
+7839	KING	5000	10
+7934	MILLER	1300	10
+```
+
+UNION은 데이터 중복을 제거한 상태로 결과 값을 출력하고 UNION ALL은 중복 데이터도 모두 출력한다. 둘 다 합집합을 의미하는 연산자이지만 결과 값이 달라지므로 사용할 때 주의해야 한다.
+
+MINUS 연산자는 차집합을 의미한다. 다음과 같이 두 SELECT문을 MINUS 연산자로 묶어 주면 두 SELECT문의 결과 값이 같은 데이터는 제외하고 첫 번째 SELECT문의 결과 값이 출력된다.
+
+```SQL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+MINUS
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10;
+```
+
+```
+7369	SMITH	800	20
+7499	ALLEN	1600	30
+7521	WARD	1250	30
+7566	JONES	2975	20
+7654	MARTIN	1250	30
+7698	BLAKE	2850	30
+7844	TURNER	1500	30
+7900	JAMES	950	    30
+7902	FORD	3000	20
+```
+
+EMP 테이블 전체 행을 조회한 첫 번째 SELECT문의 결과에서 10번 부서에 있는 사원 데이터를 제외한 결과 값이 출력된다.
+
+INTERSECT 연산자는 교집합을 의미하므로 두 SELECT문의 결과 값이 같은 데이터만 출력된다.
+
+```SQL
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+INTERSECT
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE DEPTNO = 10;
+```
+
+```
+7782	CLARK	2450	10
+7839	KING	5000	10
+7934	MILLER	1300	10
+```
+
+### 연산자 우선순의
+
+| 우선순위 | 연산자                              | 설명                       |
+| -------- | ----------------------------------- | -------------------------- |
+| 높음     | *, /                                | 산술 연산자 곱하기, 나누기 |
+|          | +, -                                | 산술 연산자 더하기, 빼기   |
+|          | =, !=, ^=, <>, >, >=, <, <=         | 대소 비교 연산자           |
+|          | IS (NOT) NULL, (NOT) LIKE, (NOT) IN | (그 외) 비교 연산자        |
+|          | BETWEEN A AND B                     | BETWEEN 연산               |
+|          | NOT                                 | 논리 부정 연산자 NOT       |
+|          | AND                                 | 논리 연산자 AND            |
+| 낮음     | OR                                  | 논리 연산자 OR             |
+
+연산식을 소괄호( )로 묶어 주면 연산자의 기본 우선순위와는 별개로 괄호 안의 연산식을 먼저 수행한다.
 
 # 데이터 처리와 가공을 위한 오라클 함수
 
 ## 오라클 함수
 
+### 오라클 함수의 종류
+
+오라클 함수는 함수를 제작한 주체를 기준으로 오라클에서 기본으로 제공하고 있는 내장 함수(built-in function)와 사용자가 필요에 의해 직접 정의한 사용자 정의 함수(user-defined function)로 나뉜다.
+
+### 내장 함수의 종류
+
+내장 함수는 입력 방식에 따라 데이터 처리에 사용하는 행이 나뉜다. 데이터가 한 행씩 입력되고 입력된 한 행당 결과가 하나씩 나오는 단일행 함수(single-row function)라고 한다. 
+
+| 열1  | 열2  | ...  | 열N  |
+| ---- | ---- | ---- | ---- |
+| 행1  |      |      |      |
+| 행2  |      |      |      |
+| ...  |      |      |      |
+| 행3  |      |      |      |
+
+▼▼▼
+
+| 열1  | 열2  | ...  | 열N  |
+| ---- | ---- | ---- | ---- |
+| 행1  |      |      |      |
+| 행2  |      |      |      |
+| ...  |      |      |      |
+| 행3  |      |      |      |
+
+반면에 여러 행이 입력되어 하나의 행으로 결과가 반환되는 함수를 다중행 함수(multiple-row function)라고 한다. 단일행 함수와 다중행 함수는 다루는 자료형에 따라 조금 더 세분화된다. 
+
+| 열1  | 열2  | ...  | 열N  |
+| ---- | ---- | ---- | ---- |
+| 행1  |      |      |      |
+| 행2  |      |      |      |
+| ...  |      |      |      |
+| 행3  |      |      |      |
+
+▼▼▼
+
+| 열1  | 열2  | ...  | 열N  |
+| ---- | ---- | ---- | ---- |
+| 행1  |      |      |      |
+
 ## 문자 함수
+
+문자 데이터를 가공하거나 문자 데이터로부터 특정 결과를 얻고자 할 때 사용하는 함수이다. 실무에서 자주 사용하는 데이터는 문자, 숫자, 날짜 데이터이다. 
+
+### UPPER, LOWER, INITCAP 함수
+
+| 함수            | 설명                                                         |
+| --------------- | ------------------------------------------------------------ |
+| UPPER(문자열)   | 괄호 안 문자 데이터를 모두 대문자로 변환하여 반환            |
+| LOWER(문자열)   | 괄호 안 문자 데이터를 모두 소문자로 변환하여 반환            |
+| INITCAT(문자열) | 괄호 안 문자 데이터 중 첫 글자는 대문자로, 나머지 문자를 소문자로 변환 후 반환 |
+
+```SQL
+SELECT ENAME, UPPER(ENAME), LOWER(ENAME), INITCAP(ENAME)
+FROM EMP;
+```
+
+```SQL
+SELECT *
+FROM 게시판테이블
+WHERE 게시판 제목 열 LIKE '%Oracle%'
+OR    게시판 본문 열 LIKE '%Oracle%';
+```
+
+LIKE 연산자를 사용하여 문자열 데이터의 패턴을 %Oracle%로 지정하였기 때문에 'Oracle' 문자열이 포함된 데이터가 모두 출력된다. 하지만 이 조건식에서 사용하는 문자열 데이터 패턴은 ORACLE, oracle, OrAcLe과 같이 대소문자가 다른 여러 가지 경우의 'Oracle' 단어를 찾아내지 못한다.
+
+이때 조건식 양쪽 항목의 문자열 데이터를 모두 대문자나 소문자로 바꿔서 비교한다면 실제 검색어의 대소문자 여부와 상관없이 검색 단어와 일치한 문자열을 포함한 데이터를 찾을 수 있다. 예를 들어 EMP 테이블에서 사원 이름이 대소문자 상관없이 scott인 사람을 찾으려면 다음과 같이 문자 함수를 사용하면 된다.
+
+```sql
+SELECT *
+FROM EMP
+WHERE UPPER(ENAME) = UPPER('king');
+```
+
+```SQL
+SELECT *
+FROM EMP
+WHERE UPPER(ENAME) LIKE UPPER('%king%');
+```
+
+```
+7839	KING	PRESIDENT   (null)   81/11/17	5000   (null)   10
+```
+
+### LENGTH 함수
+
+```SQL
+SELECT ENAME, LENGTH(ENAME)
+FROM EMP;
+```
+
+```
+SMITH	5
+ALLEN	5
+WARD	4
+JONES	5
+MARTIN	6
+BLAKE	5
+CLARK	5
+KING	4
+TURNER	6
+JAMES	5
+FORD	4
+MILLER	6
+```
+
+```SQL
+SELECT ENAME, LENGTH(ENAME)
+FROM EMP
+WHERE LENGTH(ENAME) >= 5;
+```
+
+```
+SMITH	5
+ALLEN	5
+JONES	5
+MARTIN	6
+BLAKE	5
+CLARK	5
+TURNER	6
+JAMES	5
+MILLER	6
+```
+
+**LENGTH 함수와 LENGTHB 함수 비교하기**
+
+```sql
+SELECT LENGTH('한글'), LENGTHB('한글')
+FROM DUAL;
+```
+
+```
+2	6
+```
+
+원래는 2, 4의 결과가 나와야 하지만 문자 인코딩을 UTF-8을 사용하고 있으므로 2, 6으로 나온다.
+
+**DUAL 테이블은 어떤 테이블인가?**
+
+> DUAL 테이블은 오라클의 최고 권한 관리자 계정인 SYS 소유의 테이블로 SCOTT 계정도 사용할 수 있는 더미(dummy) 테이블이다. 데이터 저장 공간이 아닌 임시 연산이나 결과 값 확인 용도로 종종 사용된다. 앞으로도 특정 연산 또는 함수의 단일 결과만을 확인할 때 사용한다.
+
+### SUBSTR 함수
+
+주민등록번호 중 생년월일 앞자리만 필요하거나 전화버노의 마지막 네 자리 숫자만 추출하는 경우와 같이 문자열 중 일부를 추출할 때 SUBSTR 함수를 사용한다.
+
+| 함수                                        | 설명                                                         |
+| ------------------------------------------- | ------------------------------------------------------------ |
+| SUBSTR(문자열 데이터, 시작 위치, 추출 길이) | 문자열 데이터의 시작 위치부터 추출 길이만큼 추출한다. 시작 위치가 음수일 경우에는 마지막 위치부터 거슬러 올라간 위치에서 시작한다. |
+| SUBSTR(문자열 데이터, 시작 위치)            | 문자열 데이터의 시작 위치부터 문자열 데이터 끝까지 추출한다. 시작 위치가 음수일 경우에는 마지막 위치부터 거슬러 올라간 위치에서 끝까지 추출한다. |
+
+**SUBSTR 함수 사용하기**
+
+```SQL
+SELECT JOB, SUBSTR(JOB, 1, 2), SUBSTR(JOB, 3, 2), SUBSTR(JOB, 5)
+FROM EMP;
+```
+
+```
+CLERK	    CL	ER	K
+SALESMAN	SA	LE	SMAN
+SALESMAN	SA	LE	SMAN
+MANAGER	    MA	NA	GER
+SALESMAN	SA	LE	SMAN
+MANAGER	    MA	NA	GER
+MANAGER	    MA	NA	GER
+PRESIDENT	PR	ES	IDENT
+SALESMAN	SA	LE	SMAN
+CLERK	    CL	ER	K
+ANALYST	    AN	AL	YST
+CLERK	    CL	ER	K
+```
+
+* SUBSTR(JOB, 1, 2) 의미
+
+  첫 번째 글자부터 두 글자 출력
+
+* SUBSTR(JOB, 3, 2) 의미
+
+  세 번째 글자부터 두 글자 출력
+
+* SUBSTR(JOB, 5) 의미
+
+  다섯 번째 글자부터 끝까지 출력
+
+**SUBSTR 함수와 다른 함수(LENGTH) 함께 사용하기**
+
+```SQL
+SELECT JOB,
+	   SUBSTR(JOB, -LENGTH(JOB)),
+	   SUBSTR(JOB, -LENGTH(JOB), 2),
+	   SUBSTR(JOB, -3)
+FROM EMP;
+```
+
+```
+CLERK	    CLERK	    CL	ERK
+SALESMAN	SALESMAN	SA	MAN
+SALESMAN	SALESMAN	SA	MAN
+MANAGER	    MANAGER	    MA	GER
+SALESMAN	SALESMAN	SA	MAN
+MANAGER	    MANAGER	    MA	GER
+MANAGER	    MANAGER  	MA	GER
+PRESIDENT	PRESIDENT	PR	ENT
+SALESMAN	SALESMAN	SA	MAN
+CLERK	    CLERK	    CL	ERK
+ANALYST	    ANALYST	    AN	YST
+CLERK	    CLERK	    CL	ERK
+```
+
+* SUBSTR(JOB, -LENGTH(JOB))
+
+  **CLERT**
+
+  -5자리(CLERK의 -LENGTH(JOB))부터 끝까지 출력
+
+* SUBSTR(JOB, -LENGTH(JOB), 2)
+
+  **CLERK**
+
+  -5자리(CLERK의 -LENGTH(JOB))부터 두 글자 출력
+
+* SUBSTR(JOB, -3)
+
+  **CLERK**
+
+  -3자리(CLERK의 -LENGTH(JOB))부터 끝까지 출력
+
+### INSTR 함수
+
+문자열 데이터 안에 특정 문자나 문자열이 어디에 포함되어 있는지를 알고자 할 때 INSTR 함수를 사용한다. INSTR 함수는 총 네 개의 입력 값을 지정할 수 있으며 최소 두 개의 입력값, 즉 원본 문자열 데이터와 원본 문자열 데이터에서 찾으려는 문자 이렇게 두 가지는 반드시 지정해 주어야 한다.
+
+```SQL
+INSTR([대상 문자열 데이터(필수)]
+      [위치를 찾으려는 부분 문자(필수)],
+      [위치 찾기를 시작할 대상 문자열 데이터 위치(선택, 기본값은 1)],
+      [시작 위치에서 찾으려는 문자가 몇 번째인지 지정(선택, 기본값은 1)])
+```
+
+**특정 문자 위치 찾기**
+
+```SQL
+SELECT INSTR('HELLO, ORACLE!', 'L') AS INSTR_1,
+	   INSTR('HELLO, ORACLE!', 'L', 5) AS INSTR_2,
+	   INSTR('HELLO, ORACLE!', 'L', 2, 2) AS INSTR_3
+FROM DUAL;
+```
+
+```
+3	12	4
+```
+
+* INSTR('HELLO, ORACLE', 'L')
+
+  시작 위치와 몇 번째 L인지 정해지지 않으므로 처음부터 검색
+
+  | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9    | 10   | 11   | 12   | 13   | 14   |
+  | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+  | H    | E    | L    | L    | O    | ,    |      | O    | R    | A    | C    | L    | E    | !    |
+  |      |      | 찾음 |      |      |      |      |      |      |      |      |      |      |      |
+
+* INSTR('HELLO, ORACLE!', 'L', 5)
+
+  다섯 번째 글자 O부터 L을 찾음
+
+  | 1    | 2    | 3    | 4    | 5               | 6    | 7    | 8    | 9    | 10   | 11   | 12   | 13   | 14   |
+  | ---- | ---- | ---- | ---- | --------------- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+  | H    | E    | L    | L    | O               | ,    |      | O    | R    | A    | C    | L    | E    | !    |
+  |      |      |      |      | 여기서부터 검색 |      |      |      |      |      |      | 찾음 |      |      |
+
+* INSTR('HELLO, ORACLE!', 'L', 2, 2)
+
+  두 번째 글자 E부터 시작해서 두 번째 L을 찾음
+
+  | 1    | 2               | 3    | 4    | 5    | 6    | 7    | 8    | 9    | 10   | 11   | 12   | 13   | 14   |
+  | ---- | --------------- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+  | H    | E               | L    | L    | O    | ,    |      | O    | R    | A    | C    | L    | E    | !    |
+  |      | 여기서부터 검색 |      | 찾음 |      |      |      |      |      |      |      |      |      |      |
+
+INSTR_1은 필수 입력 데이터 두 개만 입력했다. 'HELLO, ORACLE!' 문자열 데이터에서 L 위치를 찾으라는 뜻이다. 시작 위치와 몇 번째 L을 찾을지 지정하지 않았기 때문에 문자열 데이터의 처음부터 왼쪽에서 오른쪽 방향으로 L을 찾게 된다. L이 세 번째 문자에서 가장 먼저 발견되므로 실행 결과로 3이 출력된다.
+
+INSTR_2는 세 번째 항목에 5를 작성했으므로 'HELLO, ORACLE!' 문자열에서 다섯 번째 글자인 O 위치부터 L을 찾게 된다. 따라서 맨 마지막 L이 있는 위치인 12가 출력되는 것이다.
+
+INSTR_3은 두 번째 글자 E부터 L을 찾되 두 번째로 찾은 L의 위치를 반환하라고 지정했으므로 4가 출력된다.
+
+INSTR 함수의 세 번째 입력 데이터, 즉 위치 찾기를 시작하는 위치 값에 음수를 쓸 때 원본 문자열 데이터의 오른쪽 끝부터 왼쪽 방향으로 검색한다. 만약 찾으려는 문자가 문자열 데이터에 포함되어 있지 않다면 위치 값이 없으므로 0을 반환한다. 따라서 INSTR 함수를 LIKE 와 비슷한 용도로 사용할 수도 있다. 예를 들어 사원 이름에 S가 포함된 사원을 출력하고 싶다면 LIKE 연산자나 INSTR 함수를 WHERE절에 다음과 같이 적용하기도 한다.
+
+**특정 문자를 포함하고 있는 행 찾기**
+
+```SQL
+SELECT *
+FROM EMP
+WHERE INSTR(ENAME, 'S') > 0;
+```
+
+```
+7369	SMITH	CLERK	7902	80/12/17	800		20
+7566	JONES	MANAGER	7839	81/04/02	2975    20
+7900	JAMES	CLERK	7698	81/12/03	950		30
+```
+
+위 예제의 WHERE절에 있는 INSTR 함수의 결과 값이 0보다 크다면 사원 이름에 S가 존재한다는 의미이다.
+
+```SQL
+SELECT *
+FROM EMP
+WHERE ENAME LIKE '%S%'
+```
+
+```
+7369	SMITH	CLERK	7902	80/12/17	800   (NULL)  20
+7566	JONES	MANAGER	7839	81/04/02	2975  (NULL)  20
+7900	JAMES	CLERK	7698	81/12/03	950	  (NULL)  30
+```
+
+위 예제의 LIKE 연산자를 사용하여 사원 이름 열의 패턴이 %S%인 문자열을 찾는 것과 같은 효과를 볼 수 있다.
+
+### 특정 문자를 다른 문자로 바꾸는 REPLACE 함수
+
+REPLACE 함수는 특정 문자열 데이터에 포함된 문자를 다른 문자로 대체할 경우에 유용한 함수이다.
+
+```SQL 
+REPLACE([문자열 데이터 또는 열 이름(필수)], [찾는 문자(필수)], [대체할 문자(선택)])
+```
+
+만약 대체할 문자를 입력하지 않는다면 찾는 문자로 지정한 문자는 문자열 데이터에서 삭제된다.
+
+```SQL
+SELECT '010-1234-5678' AS REPLACE_BEFORE,
+		REPLACE('010-1234-5678', '-', ' ') AS REPLACE_1,
+		REPLACE('010-1234-5678', '-') AS REPLACE_2
+FROM DUAL;
+```
+
+```
+010-1234-5678	010 1234 5678	01012345678
+```
+
+
 
 ## 숫자 함수
 
