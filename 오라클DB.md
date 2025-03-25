@@ -1240,7 +1240,7 @@ FROM EMP
 WHERE JOB NOT IN ('MANAGER', 'SALESMAN', 'CLERK');
 ```
 
-### BETWEEM A AND B 연산자
+### BETWEEN A AND B 연산자
 
 ```SQL
 SELECT [조회할 열1 이름], ... , [열N 이름]
@@ -2017,7 +2017,182 @@ FROM DUAL;
 
 ## 숫자 함수
 
+| 함수  | 설명                                             |
+| ----- | ------------------------------------------------ |
+| ROUND | 지정된 숫자의 특정 위치에서 반올림한 값을 반환   |
+| TRUNC | 지정된 숫자의 특정 위치에서 버림한 값을 반환     |
+| CEIL  | 지정된 숫자보다 큰 정수 중 가장 작은 정수를 반환 |
+| FLOOR | 지정된 숫자보다 작은 정수 중 가장 큰 정수를 반환 |
+| MOD   | 지정된 숫자를 나눈 나머지 값을 반환              |
+
+### 특정 위치에서 반올림하는 ROUND 함수
+
+특정 숫자를 반올림하되 반올림할 위치를 지정할 수 있다. 반올림할 위치를 지정하지 않으면 소수점 첫째 자리에서 반올림한 결과가 반환된다. 
+
+```SQL
+ROUND([숫자(필수)], [반올림 위치(선택)])
+```
+
+```SQL
+SELECT ROUND(1234.5678) AS ROUND,
+	   ROUND(1234.5678, 0) AS ROUND_0,
+	   ROUND(1234.5678, 1) AS ROUND_1,
+	   ROUND(1234.5678, 2) AS ROUND_2,
+	   ROUND(1234.5678, -1) AS ROUND_MINUS1,
+	   ROUND(1234.5678, -2) AS ROUND_MINUS2
+FROM DUAL;
+```
+
+![image-20250324184934374](.\assets\image-20250324184934374.png)
+
+반올림 위치를 지정하지 않은 반환값은 반올림 위치를 0으로 지정한 것과 같은 결과가 출력된다. 반올림 위치 값이 0에서 양수로 올라가면 반올림 위치가 한 자리씩 더 낮은 소수점 자리를 향하게 되고, 0에서 음수로 내려가면 자연수 쪽으로 한 자리씩 위로 반올림하게 된다. 보통 소수점 첫째자리에서 반올림하는 것이 일반적이지만 위치 값에 따른 반올림 기준 위치를 지정할 수도 있다.
+
+### 특정 위치에서 버리는 TRUNC 함수
+
+TRUNC 함수는 지정된 자리에서 숫자를 버림 처리하는 함수이다. ROUND 함수와 마찬가지 방식으로 버림 처리할 자릿수 지정이 가능하다. TRUNC 함수 역시 반올림 위치를 지정하지 않으면 소수점 첫째자리에서 버림 처리된다.
+
+```SQL
+TRUNC([숫자(필수)], [버림 위치(선택)])
+```
+
+```SQL
+SELECT TRUNC(1234.5678) AS TRUNC,
+	   TRUNC(1234.5678, 0) AS TRUNC_0,
+	   TRUNC(1234.5678, 1) AS TRUNC_1,
+	   TRUNC(1234.5678, 2) AS TRUNC_2,
+	   TRUNC(1234.5678, -1) AS TRUNC_MINUS1,
+	   TRUNC(1234.5678, -2) AS TRUNC_MINUS2
+FROM DUAL;
+```
+
+![image-20250324185547835](.\assets\image-20250324185547835.png)
+
+### 지정한 숫자와 가까운 정수를 찾는 CEIL, FLOOR 함수
+
+CEIL 함수와 FLOOR 함수는 각각 입력된 숫자와 가까운 큰 정수, 작은 정수를 반환하는 함수이다.
+
+```SQL
+CEIL([숫자(필수)])
+FLOOR([숫자(필수)])
+```
+
+```SQL
+SELECT CEIL(3.14),
+	   FLOOR(3.14),
+	   CEIL(-3.14),
+	   FLOOR(-3.14)
+FROM DUAL;
+```
+
+![image-20250324194239801](.\assets\image-20250324194239801.png)
+
+### 숫자를 나눈 나머지 값을 구하는 MOD 함수
+
+```SQL
+MOD([나눗셈 될 숫자(필수)], [나눌 숫자(필수)])
+```
+
+```SQL
+SELECT MOD(15, 6),
+       MOD(10, 2),
+       MOD(11, 2)
+FROM DUAL;
+```
+
+![image-20250324194430171](.\assets\image-20250324194430171.png)
+
 ## 날짜 함수
+
+| 연산                      | 설명                                      |
+| ------------------------- | ----------------------------------------- |
+| 날짜 데이터 + 숫자        | 날짜 데이터보다 숫자만큼 일수 이후의 날짜 |
+| 날짜 데이터 - 숫자        | `` 이전의 날짜                            |
+| 날짜 데이터 - 날짜 데이터 | 두 날짜 데이터 간의 일수 차이             |
+| 날짜 데이터 + 날짜 데이터 | 연산 불가, 지원하지 않음                  |
+
+오라클에서 제공하는 날짜 함수 중 가장 대표 함수는 SYSDATE 함수이다. SYSDATE 함수는 별다른 입력 데이터 없이, 오라클 데이터베이스 서버가 놓인 OS의 현재 날짜와 시간을 보여준다.
+
+```sql
+SELECT SYSDATE AS NOW,
+       SYSDATE-1 AS YESTERDAY,
+       SYSDATE+1 AS TOMORROW
+FROM DUAL;
+```
+
+![image-20250324194759681](.\assets\image-20250324194759681.png)
+
+### ADD_MONTHS 함수
+
+ADD_MONTHS 함수는 특정 날짜에 지정한 개월 수 이후 날짜 데이터를 반환하는 함수이다. 다음과 같이 날짜형 데이터 그리고 더할 개월 수를 정수로 지정하여 사용한다.
+
+```SQL
+ADD_MONTHS([날짜 데이터(필수)], [더할 개월 수(정수)(필수)])
+```
+
+```SQL
+SELECT SYSDATE,
+	   ADD_MONTHS(SYSDATE, 3)
+FROM DUAL;
+```
+
+![image-20250324202058648](.\assets\image-20250324202058648.png)
+
+윤년 등의 이유로 복잡해질 수 있는 날짜 계산을 간단하게 만들어 주기에 자주 사용되는 함수이다. 
+
+```SQL
+SELECT EMPNO, ENAME, HIREDATE,
+	   ADD_MONTHS(HIREDATE, 12*10) AS WORK10YEAR
+FROM EMP;
+```
+
+![image-20250324202333705](.\assets\image-20250324202333705.png)
+
+만약 입사한지 44년이 되지 않은 사원을 출력하고자 한다면 아래와 같이 WHERE절에 사용하는 것도 가능하다.
+
+```SQL
+SELECT EMPNO,
+	   ENAME, HIREDATE, SYSDATE
+FROM EMP
+WHERE ADD_MONTHS(HIREDATE, 12*44) > SYSDATE;
+```
+
+![image-20250324202935892](.\assets\image-20250324202935892.png)
+
+### MONTHS_BETWEEN 함수
+
+MONTHS_BETWEEN 함수는 두 개의 날짜 데이터를 입력하고 두 날짜 간의 개월 수 차이를 구하는 데 사용한다.
+
+```SQL
+MONTHS_BETWEEN([날짜 데이터1(필수)], [날짜 데이터2(필수)])
+```
+
+```SQL
+SELECT EMPNO, ENAME, HIREDATE, SYSDATE,
+	   MONTHS_BETWEEN(HIREDATE, SYSDATE) AS MONTHS1,
+	   MONTHS_BETWEEN(SYSDATE, HIREDATE) AS MONTHS2,
+	   TRUNC(MONTHS_BETWEEN(SYSDATE, HIREDATE)) AS MONTHS3
+FROM EMP;
+```
+
+![image-20250324203313205](.\assets\image-20250324203313205.png)
+
+MONTHS1, MONTHS2에서 알 수 있듯이 비교 날짜의 입력 위치에 따라 음수 또는 양수가 나올 수 있다. 개월 수 차이는 소수점 단위까지 결과가 나오므로 MONTHS3과 같이 TRUNC 함수를 조합하면 개월 수 차이를 정수로 출력할 수도 있다.
+
+### NEXT_DAY, LAST_DAY 함수
+
+NEXT_DAY 함수는 날짜 데이터와 요일 문자열을 입력한다. 입력한 날짜 데이터에서 돌아오는 요일의 날짜를 반환한다.
+
+```SQL
+NEXT_DAY([날짜 데이터(필수)], [요일 문자(필수)])
+```
+
+LAST_DAY 함수는 하나의 날짜 데이터만을 입력 데이터로 사용하며 해당 날짜가 속한 달의 마지막 날짜를 반환해 주는 함수이다.
+
+```SQL
+LAST_DAY([날짜 데이터(필수)])
+```
+
+
 
 ## 형 변환 함수
 
@@ -2125,15 +2300,97 @@ FROM DUAL;
 
 ## 롤 관리
 
-# PL/SQL 기초
+# PL/SQL
 
-## PL/SQL 구조
+## PL/SQL 기본 개념
 
-## 변수와 상수
+### PL/SQL의 정의와 특징
 
-## 조건 제어문
+### PL/SQL과 SQL의 차이점
 
-## 반복 제어문
+### PL/SQL 실행 환경(SQL*Plus, SQL Developer 등)
+
+### PL/SQL의 사용 예시
+
+## PL/SQL의 기본 구성 요소
+
+### 블록 구조
+
+### 익명 블록 vs 저장된 블록
+
+## 데이터 유형 및 변수
+
+### 기본 데이터 유형(NUMBER, VARCHAR2, DATE 등)
+
+### 변수 선언 및 사용
+
+### 상수와 데이터 타입 정의
+
+### 바인드 변수
+
+## 제어 구조
+
+### 조건문
+
+### 반복문
+
+## 커서(Cursor)
+
+### 기본 커서 사용법(명시적, 암시적)
+
+### 커서 FOR 루프
+
+### 커서 속성(%FOUND, %NOTFOUND, %ROWCOUNT 등)
+
+## 저장 객체
+
+### 저장된 프로시저와 함수
+
+### 패키지(Package)
+
+### 트리거(Trigger)
+
+## 예외 처리
+
+### 예외 처리 기본 구조
+
+### 내장 예외(예 : NO_DATA_FOUND, TOO_MANY_ROWS)
+
+### 사용자 정의 예외
+
+### RAISE와 RAISE_APPLICATION_ERROR
+
+## 동적 SQL
+
+### EXECUTE IMMEDIATE
+
+### DBMS_SQL 패키지를 사용한 동적 SQL 실행
+
+## 성능 및 최적화
+
+### BULK COLLECT 및 FORALL
+
+### 성능 개선 기법
+
+### SQL과 PL/SQL의 통합 활용
+
+### 동시성 및 잠금 관리
+
+## 보안 및 관리
+
+### PL/SQL 권한 설정
+
+### 데이터 마스킹 및 보안 처리
+
+### 사용자 계정 관리
+
+## 고급 주제
+
+### PL/SQL로 JSON 및 XML 데이터 처리
+
+### 대용량 데이터 관리 기법
+
+### 스케줄링(Job) 및 작업 관리(DBMS_SCHEDULER)
 
 # 레코드와 컬렉션
 
@@ -2158,3 +2415,197 @@ FROM DUAL;
 ## 패키지
 
 ## 트리거
+
+# Oracle 멀티테넌트 아키텍처와 컨테이너 관리
+
+## 데이터베이스 아키텍처
+
+### Oracle Database구조와 멀티테넌트 아키텍처(CDB와 PDB 개념 포함)
+
+### 데이터베이스 컨테이너의 역할과 PDB 관리
+
+## DBA(Database Administration) 작업
+
+### CDB 생성 및 관리
+
+### PDB 생명, 플러그/언플러그 작업
+
+### 컨테이너 전환 및 데이터 조회
+
+## SQL 및 데이터 딕셔너리 뷰
+
+### 컨테이너와 관련된 데이터 딕셔너리 뷰(V$PDBS, V$CONTAINERS 등)
+
+### 컨테이너 상태와 정보 확인
+
+## 사용자 및 권한 관리
+
+### 컨테이너에서 사용자 생성 및 권한 부여(CREATE USER, GRANT)
+
+### CONTAINER 옵션의 활용(CONTAINER=ALL, CONTAINER=CURRENT)
+
+## PL/SQL 프로그래밍
+
+### 컨테이너 정보를 활용하여 저장 프로시저나 사용자 지정 함수 구현
+
+### 컨테이너 간의 데이터 이동 및 관리 자동화
+
+# 메모
+
+## Oracle SQL 학습을 위한 체계적인 목차
+
+### **I. Oracle SQL의 기본 개념**
+
+1. SQL 개념 소개
+   - SQL의 정의와 특징
+   - 데이터베이스와 SQL의 관계
+2. Oracle SQL 환경 설정
+   - Oracle 설치 및 기본 환경 설정
+   - SQL*Plus와 SQL Developer 사용법
+3. 데이터베이스 구조 이해
+   - 테이블, 열(Column), 행(Row)의 개념
+   - 데이터베이스 스키마 정의
+
+### **II. Oracle SQL 명령어**
+
+1. 데이터 정의 언어 (DDL)
+   - 테이블 생성 (`CREATE TABLE`)
+   - 테이블 수정 (`ALTER TABLE`)
+   - 테이블 삭제 (`DROP TABLE`)
+   - 인덱스 생성 및 관리
+2. 데이터 조작 언어 (DML)
+   - 데이터 삽입 (`INSERT`)
+   - 데이터 조회 (`SELECT`)
+   - 데이터 수정 (`UPDATE`)
+   - 데이터 삭제 (`DELETE`)
+3. 데이터 제어 언어 (DCL)
+   - 권한 부여 (`GRANT`)
+   - 권한 회수 (`REVOKE`)
+4. 트랜잭션 제어 언어 (TCL)
+   - 데이터 저장 (`COMMIT`)
+   - 롤백 (`ROLLBACK`)
+   - 트랜잭션 관리 (`SAVEPOINT`)
+
+### **III. SQL 함수**
+
+1. 단일 행 함수
+   - 문자열 함수 (`LENGTH`, `SUBSTR`, `CONCAT`)
+   - 숫자 함수 (`ROUND`, `TRUNC`, `MOD`)
+   - 날짜 함수 (`SYSDATE`, `ADD_MONTHS`, `LAST_DAY`)
+2. 그룹 함수
+   - 집계 함수 (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`)
+   - 그룹 데이터 처리 (`GROUP BY`, `HAVING`)
+3. 고급 함수
+   - 정규 표현식 함수 (`REGEXP_LIKE`, `REGEXP_SUBSTR`)
+   - 분석 함수 (`RANK`, `ROW_NUMBER`, `NTILE`)
+
+### **IV. 고급 SQL**
+
+1. 조인 (JOIN) 활용
+   - 내부 조인 (`INNER JOIN`)
+   - 외부 조인 (`LEFT JOIN`, `RIGHT JOIN`)
+   - 셀프 조인
+2. 서브쿼리
+   - 단일 행 서브쿼리
+   - 다중 행 서브쿼리
+   - 상관 서브쿼리
+3. 뷰(View) 생성 및 활용
+   - 뷰 정의 (`CREATE VIEW`)
+   - 복잡한 쿼리의 단순화
+4. 시퀀스 및 제약 조건
+   - 시퀀스 정의 및 사용
+   - 기본 키와 외래 키 제약 조건
+5. 데이터 계층화 및 계층적 쿼리
+   - 계층적 데이터 (`CONNECT BY`, `START WITH`)
+
+### **V. PL/SQL 기초**
+
+1. PL/SQL 개념 소개
+   - PL/SQL 블록 구조
+   - 익명 블록과 저장 블록
+2. 변수와 데이터 타입
+   - 기본 데이터 유형 (`VARCHAR2`, `NUMBER`, `DATE`)
+   - 변수 선언 및 사용
+   - 상수와 커서
+3. 제어 구조
+   - 조건문 (`IF`, `CASE`)
+   - 반복문 (`FOR`, `WHILE`, `LOOP`)
+
+### **VI. PL/SQL 고급 주제**
+
+1. 저장 프로시저와 함수
+   - 프로시저 생성 (`CREATE PROCEDURE`)
+   - 함수 생성 (`CREATE FUNCTION`)
+   - IN/OUT 파라미터 활용
+2. 패키지 (Package)
+   - 패키지 정의 및 사용 (`CREATE PACKAGE`)
+   - 패키지 변수와 함수
+3. 트리거 (Trigger)
+   - 행 수준 트리거 (`BEFORE INSERT`, `AFTER UPDATE`)
+   - 문장 수준 트리거
+4. 예외 처리
+   - 시스템 예외 (`NO_DATA_FOUND`, `TOO_MANY_ROWS`)
+   - 사용자 정의 예외 (`RAISE`)
+5. 커서(Cursor)
+   - 명시적 커서와 암시적 커서
+   - 커서 속성 및 커서 FOR 루프
+
+### **VII. 멀티테넌트 아키텍처 (컨테이너 관리)**
+
+1. 데이터베이스 컨테이너(CDB)와 플러그형 데이터베이스(PDB)
+   - CDB와 PDB의 구조 이해
+   - PDB 생성 및 플러그/언플러그 작업
+2. 컨테이너 전환 및 정보 조회
+   - 컨테이너 전환 (`ALTER SESSION SET CONTAINER`)
+   - 컨테이너 상태 확인 (`V$PDBS`, `V$CONTAINERS`)
+3. 컨테이너 기반 사용자 및 권한 관리
+   - 사용자 생성 (`CREATE USER`) 및 권한 부여 (`GRANT`)
+   - CONTAINER 옵션 (`CONTAINER=ALL`, `CONTAINER=CURRENT`)
+
+### **VIII. 파일 입출력 및 시스템 연동**
+
+1. UTL_FILE 패키지를 활용한 파일 처리
+   - 파일 읽기/쓰기
+   - 디렉터리 설정 및 관리 (`CREATE DIRECTORY`)
+2. 외부 테이블 활용
+   - OS 파일 데이터를 SQL로 조회
+   - 외부 테이블 정의 및 데이터 접근
+3. 시스템 명령 실행 및 스케줄링
+   - DBMS_SCHEDULER를 활용한 작업 자동화
+   - 시스템 명령 호출 및 결과 로그 기록
+
+### **IX. 성능 및 최적화**
+
+1. 대량 데이터 처리 기법
+   - BULK COLLECT 및 FORALL
+   - 대량 데이터 삽입 및 수정
+2. 동적 SQL 활용
+   - EXECUTE IMMEDIATE를 사용한 동적 쿼리 실행
+   - 동적 SQL의 보안 및 성능 최적화
+3. 데이터베이스 성능 진단
+   - 쿼리 계획 분석 (`EXPLAIN PLAN`)
+   - 성능 개선 도구 활용 (`DBMS_STATS`)
+
+### **X. 보안 및 권한 관리**
+
+1. 사용자 계정 관리
+   - 사용자 생성 및 삭제
+   - 계정 잠금/해제 (`ALTER USER`)
+2. 데이터 보안
+   - 열 암호화 및 데이터 마스킹
+   - 보안 정책 관리 (`DBMS_CRYPTO`, `DBMS_RLS`)
+3. 접근 제어
+   - 테이블 및 뷰 권한 부여 (`GRANT`, `REVOKE`)
+   - 역할(Role) 정의 및 관리
+
+### **XI. 최신 기술과 고급 주제**
+
+1. JSON 및 XML 데이터 처리
+   - JSON 테이블 생성 및 처리 (`JSON_TABLE`)
+   - XML 데이터 조회 및 변환 (`XMLTABLE`)
+2. 클라우드 환경에서의 Oracle 활용
+   - Autonomous Database와 SQL 차이점
+   - 클라우드 기반 데이터베이스 관리
+3. AI 및 머신러닝과 SQL 통합
+   - 데이터 분석과 SQL 활용
+   - Oracle의 ML 관련 패키지 활용
