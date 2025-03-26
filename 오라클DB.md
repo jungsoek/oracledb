@@ -2192,9 +2192,265 @@ LAST_DAY 함수는 하나의 날짜 데이터만을 입력 데이터로 사용�
 LAST_DAY([날짜 데이터(필수)])
 ```
 
+```sql
+SELECT SYSDATE,
+	   NEXT_DAY(SYSDATE, '월요일'),
+	   LAST_DAY(SYSDATE)
+FROM DUAL;
+```
 
+![image-20250326192108766](./assets/image-20250326192108766.png)
+
+### 날짜의 반올림, 버림을 하는 ROUND, TRUNC 함수
+
+숫자 데이터의 반올림, 버림 처리에 사용한 ROUND, TRUNC 함수는 날짜 데이터를 입력 데이터로 사용할 수도 있다. 이때는 소수점 위치 정보를 입력하지 않고 반올림, 버림의 기준이 될 포맷(format) 값을 지정해 준다.
+
+| 입력 데이터 종류 | 사용 방식                                     |
+| ---------------- | --------------------------------------------- |
+| 숫자 데이터      | ROUND([숫자(필수)], [반올림 위치])            |
+|                  | TRUNC([숫자(필수)], [버림 위치])              |
+| 날짜 데이터      | ROUND([날짜데이터(필수)], [반올림 기준 포맷]) |
+|                  | TRUNC([날짜데이터(필수)], [버림 기준 포맷])   |
+
+오라클에서 날짜 데이터를 사용할 때 기준 포맷 값은 다음과 같다.
+
+| 포맷 모델                            | 기준 단위                                                    |
+| ------------------------------------ | ------------------------------------------------------------ |
+| CC, SCC                              | 네 자리 연도의 끝 두 자리를 기준으로 사용(2016년이면 2050 이하이므로, 반올림할 경우 2001년으로 처리) |
+| SYYYY, YYYY, YEAR, SYEAR, YYY, YY, Y | 날짜 데이터의 해당 연월일의 7월 1일 기준(2016년 7월 1일 일 경우, 2017년으로 처리) |
+| IYYY, IYY, IY, I                     | ISO 8601에서 제정한 날짜 기준년도 포맷을 기준                |
+| Q                                    | 각 분기의 두 번째 달의 16일 기준                             |
+| MONTH, MON, MM, RM                   | 각 달의 16일 기준                                            |
+| WW                                   | 해당 연도의 몇 주(1-53번째 주)를 기준                        |
+| IW                                   | ISO 8601에서 제정한 날짜 기준 해당 연도의 주(week)를 기준    |
+| W                                    | 해당 월의 주(1~5번째 주)를 기준                              |
+| DDD, DD, J                           | 해당 일의 정오(12:00:00)를 기준                              |
+| DAY, DY, D                           | 한 주가 시작되는 날짜를 기준                                 |
+| HH, HH12, HH24                       | 해당일의 시간을 기준                                         |
+| MI                                   | 해당일 시간의 분을 기준                                      |
+
+SELECT문을 실행하는 시점의 날짜가 결과에 영향을 미치므로 다음 결과 내용은 SELECT문 실행 결과와는 다르게 나오는 것에도 주의해야 한다.
+
+```SQL
+SELECT SYSDATE,
+	   ROUND(SYSDATE, 'CC') AS FORMAT_CC,
+	   ROUND(SYSDATE, 'YYYY') AS FORMAT_YYYY,
+	   ROUND(SYSDATE, 'Q') AS FORMAT_Q,
+	   ROUND(SYSDATE, 'DDD') AS FORMAT_DDD,
+	   ROUND(SYSDATE, 'HH') AS FORMAT_HH
+FROM DUAL;
+```
+
+![image-20250326203530870](./assets/image-20250326203530870.png)
+
+```SQL
+SELECT SYSDATE,
+	   TRUNC(SYSDATE, 'CC') AS FORMAT_CC,
+	   TRUNC(SYSDATE, 'YYYY') AS FORMAT_YYYY,
+	   TRUNC(SYSDATE, 'Q') AS FORMAT_Q,
+	   TRUNC(SYSDATE, 'DDD') AS FORMAT_DDD,
+	   TRUNC(SYSDATE, 'HH') AS FORMAT_HH
+FROM DUAL;
+```
+
+![image-20250326203721019](./assets/image-20250326203721019.png)
 
 ## 형 변환 함수
+
+각 데이터에 지정된 자료형을 바꿔 주는 함수를 형 변환 함수라고 한다.
+
+```SQL
+SELECT EMPNO, ENAME, EMPNO + '500'
+FROM EMP
+WHERE ENAME = 'KING';
+```
+
+![image-20250326203932907](./assets/image-20250326203932907.png)
+
+위의 예제에서 암시적 형변환(implicit type conversion)이 발생했다.
+
+```sql
+SELECT 'ABCD' + EMPNO, EMPNO
+FROM EMP
+WHERE ENAME = 'KING';
+```
+
+![image-20250326204355269](./assets/image-20250326204355269.png)
+
+숫자처럼 생긴 문자 데이터는 숫자로 바꿔 주지만 그 외의 경우는 잘 동작하길 기대하기 어렵다.
+
+오라클에서 자료형이 자동으로 변환되는 방식이 아닌 사용자, 즉 우리가 자료형을 직접 지정해 주는 방식을 명시적 형 변환(explicit type conversion)이라고 한다. 형 변환 함수를 사용하여 자료형을 변환해 주는 방식이 명시적 형 변환에 해당한다. 형 변환 함수의 종류는 다음과 같다.
+
+| 종류      | 설명                                       |
+| --------- | ------------------------------------------ |
+| TO_CHAR   | 숫자 또는 날짜 데이터를 문자 데이터로 변환 |
+| TO_NUMBER | 문자 데이터를 숫자 데이터로 변환           |
+| TO_DATE   | 문자 데이터를 날짜 데이터로 변환           |
+
+형 변환 함수를 사용하면 다음과 같이 숫자 데이터와 문자 데이터, 문자 데이터와 날짜 데이터 간의 변환이 가능하다. 
+
+숫자 데이터(NUMBER) ↔ 문자 데이터(CHARACTER) ↔ 날짜 데이터(DATE)
+
+### TO_CHAR 함수
+
+```SQL
+TO_CHAR([날짜데이터(필수)], '[출력되길 원하는 문자 형태(필수)]')
+```
+
+**원하는 출력 형태로 날짜 출력하기**
+
+```SQL
+SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') AS 현재날짜시간
+FROM DUAL;
+```
+
+![image-20250326205208022](./assets/image-20250326205208022.png)
+
+| 형식       | 설명                        |
+| ---------- | --------------------------- |
+| CC         | 세기                        |
+| YYYY, RRRR | 연(4자리 숫자)              |
+| YY, RR     | 연(2자리 숫자)              |
+| MM         | 월(2자리 숫자)              |
+| MON        | 월(언어별 월 이름 약자)     |
+| MONTH      | 월(언어별 월 이름 전체)     |
+| DD         | 일(2자리 숫자)              |
+| DDD        | 1년 중 며칠(1-366)          |
+| DY         | 요일(언어별 오일 이름 약자) |
+| DAY        | 요일(언어별 요일 이름 전체) |
+| W          | 1년 중 몇 번째 주(1-53)     |
+
+```SQL
+SELECT SYSDATE,
+	   TO_CHAR(SYSDATE, 'MM') AS MM,
+	   TO_CHAR(SYSDATE, 'MON') AS MON,
+	   TO_CHAR(SYSDATE, 'MONTH') AS MONTH,
+	   TO_CHAR(SYSDATE, 'DD') AS DD,
+	   TO_CHAR(SYSDATE, 'DY') AS DY,
+	   TO_CHAR(SYSDATE, 'DAY') AS DAY
+FROM DUAL;
+```
+
+![image-20250326205652073](./assets/image-20250326205652073.png)
+
+**특정 언어에 맞춰서 날짜 출력하기**
+
+```SQL
+TO_CHAR([날짜 데이터(필수)], '[출력되길 원하는 문자 형태(필수)]', 'NSL_DATE_LANGUAGE = language'(선택))
+```
+
+```sql
+SELECT SYSDATE,
+	   TO_CHAR(SYSDATE, 'MM') AS MM,
+	   TO_CHAR(SYSDATE, 'MON', 'NLS_DATE_LANGUAGE = JAPANESE') AS MON_JPN
+FROM DUAL;
+```
+
+![image-20250326210041241](./assets/image-20250326210041241.png)
+
+**시간 형식 지정하여 출력하기**
+
+| 형식               | 설명                   |
+| ------------------ | ---------------------- |
+| HH24               | 24시간으로 표현한 시간 |
+| HH, HH12           | 12시간으로 표현한 시간 |
+| MI                 | 분                     |
+| SS                 | 초                     |
+| AM, PM, A.M., P.M. | 오전, 오후 표시        |
+
+```SQL
+SELECT SYSDATE,
+	   TO_CHAR(SYSDATE, 'HH24:MI:SS') AS HH24MISS,
+	   TO_CHAR(SYSDATE, 'HH12:MI:SS AM') AS HHMISS_AM,
+	   TO_CHAR(SYSDATE, 'HH:MI:SS P.M.') AS HHMISS_PM
+FROM DUAL;
+```
+
+![image-20250326210349294](./assets/image-20250326210349294.png)
+
+### 문자 데이터를 숫자 데이터로 변환하는 TO_NUMBER 함수
+
+아래 SELECT문은 암시적 형변환이 일어나 연산이 정상적으로 수행된다.
+
+```SQL
+SELECT 1300 - '1500',
+	   '1300' - 1500
+FROM DUAL;
+```
+
+![image-20250326211017302](./assets/image-20250326211017302.png)
+
+하지만 아래의 SELECT문은 연산이 수행되지 않는다. 숫자 사이에 쉼표(,)가 들어가서 숫자로 변환이 되지 않았기 때문이다.
+
+```SQL
+SELECT '1,300' - '1,500'
+FROM DUAL;
+```
+
+![image-20250326211146699](./assets/image-20250326211146699.png)
+
+숫자 데이터가 가공된 문자 데이터로 저장되어 있고 그 데이터를 산술 연산에 사용하고자 할 경우, 문자 데이터를 숫자 형태로 강제로 인식시켜 주어야 한다. 이때 사용하는 함수가 바로 TO_NUMBER 함수이다.
+
+```SQL
+TO_NUMBER('[문자열 데이터(필수)]', '[인식될 숫자형태(필수)]')
+```
+
+앞에서 실행되지 않았던 연산은 다음과 같이 TO_NUMBER 함수를 각 데이터에 사용하면 실행된다.
+
+```SQL
+SELECT TO_NUMBER('1,300', '999,999') - TO_NUMBER('1,500', '999,999')
+FROM DUAL;
+```
+
+![image-20250326211448820](./assets/image-20250326211448820.png)
+
+### 문자 데이터를 날짜 데이터로 변환하는 TO_DATE 함수
+
+```SQL
+TO_DATE('[문자열 데이터(필수)]', '[인식될 날짜형태(필수)]')
+```
+
+먼저 날짜 데이터로 변환하려면 문자열 데이터(또는 열)를 입력한 후 그 데이터를 날짜 형태로 인식시킬 형식을 지정한다. 
+
+```SQL
+SELECT TO_DATE('2018-07-14', 'YYYY-MM-DD') AS TODATE1,
+	   TO_DATE('20180714', 'YYYY-MM-DD') AS TODATE2
+FROM DUAL;
+```
+
+![image-20250326212044068](./assets/image-20250326212044068.png)
+
+날짜 함수에서 언급했듯이 날짜 데이터끼리는 간단한 연산이 가능하다. 날짜 데이터는 상대적으로 이전 날짜인 데이터가 이후 날짜 데이터보다 크기가 작은 데이터로 여겨지기 때문에 다음과 같이 TO_DATE 함수와 비교 연산자를 사용하여 EMP 테이블에서 1981년 6월 1일 이후 입사한 사원을 찾는 것도 가능하다.
+
+```SQL
+SELECT *
+FROM EMP
+WHERE HIREDATE > TO_DATE('1981/06/01', 'YYYY/MM/DD');
+```
+
+![image-20250326212518342](./assets/image-20250326212518342.png)
+
+날짜 데이터 형식을 지정할 때 YYYY, RRRR, YY, RR를 사용할 수 있다. 네 자리로 표현하는 연도는 문제가 없지만 두 자리로 연도를 표현할 때 사용하는 YY, RR는 사용상 주의를 기울여야 한다.
+
+```SQL
+SELECT TO_DATE('49/12/10', 'YY/MM/DD') AS YY_YEAR_49,
+       TO_DATE('49/12/10', 'RR/MM/DD') AS RR_YEAR_49,
+       TO_DATE('50/12/10', 'YY/MM/DD') AS YY_YEAR_50,
+       TO_DATE('50/12/10', 'RR/MM/DD') AS RR_YEAR_50,
+       TO_DATE('51/12/10', 'YY/MM/DD') AS YY_YEAR_51,
+       TO_DATE('51/12/10', 'RR/MM/DD') AS RR_YEAR_51
+FROM DUAL;
+```
+
+![image-20250326215021645](./assets/image-20250326215021645.png)
+
+결과를 보면 1950년을 기점으로 YY와 RR를 사용한 날짜가 각각 2050년, 1950년으로 다르게 인식된다. 이는 YY와 RR가 1900년대와 2000년대의 앞자리 수를 계산하는 방식이 달라서이다.
+
+YY는 어떤 두 자리 수가 입력되어도 현 시잠의 연도와 동일한 연도로 계산되고 RR은 현 시점의 연도의 끝 두 자리 수가 00-49, 50-99 그리고 입력된 수치가 00-49, 50-99 인 경우를 계산하여 비교적 가까운 날짜 데이터를 계산해 준다.
+
+
+
+
 
 ## NULL 처리 함수
 
