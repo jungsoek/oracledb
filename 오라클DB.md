@@ -2009,7 +2009,7 @@ FROM DUAL;
 
 삭제할 문자를 지정하지 않을 경우 각각 함수 종류(TRIM, LTRIM, RTRIM)에 따라 양쪽, 왼쪽, 오른쪽 공백이 제거된다. LTRIM, RTRIM을 사용한 예시에서 삭제 대상이 문자일 경우 해당 문자의 순서와 반복을 통해 만들어 낼 수 있는 모든 조합이 각각 왼쪽, 오른쪽부터 삭제되어 간다. LTRIM_2의 경우 `<_` 문자열이 `_`, `<` 문자의 조합으로 표현 가능한 문자이므로 삭제된다. 하지만 그 다음에 이어지는 Oracle의 O문자에서(RTRIM_2의 경우 e) `_<`로 조합할 수 없는 문자가 시작되므로 이 단계에서 LTRIM을 통한 삭제 작업은 끝나게 된다. 즉 `_<`를 삭제할 문자로 지정하고 원본 문자열이 `<_<_Oracle`일 경우 결과는 Oracle만 남게 된다. 하지만 `<_O<_racle` 문자열은 LTRIM의 결과로 `O<_racle`이 남게 된다.
 
-**LTRIM, RTRIM, TRIM 옵션까지 모두 다 외워야 하나요?**
+**LTRIM, RTRIM, TRIM 옵션까지 모두 다 외워야 하는가?**
 
 >문자 삭제를 위한 TRIM, LTRIM, RTRIM 함수는 사용하는 옵션이 많아 까다로워 보일 수 있다. 만약 옵션을 모두 외우기가 어렵다면 우선 LTRIM, RTRIM 함수가 존재하고 있다는 것과 TRIM 함수는 경우에 따라서 문자열 데이터 양쪽의 공백을 제거할 때 사용한다.
 >
@@ -2523,11 +2523,108 @@ DECODE 함수는 한 행으로 입력받아 한 행으로 결과가 나오는 �
 
 ### CASE문
 
-CASE문은 DECODE 함수와 마찬가지로 특정 조건에 따라 반환할 데이터를 설정할 때 사용한다.
+CASE문은 DECODE 함수와 마찬가지로 특정 조건에 따라 반환할 데이터를 설정할 때 사용한다. 기준 데이터를 반드시 명시하고 그 값에 따라 반환 데이터를 정하는 DECODE 함수와 달리 CASE문은 각 조건에 사용하는 데이터가 서로 상관없어도 된다. 또 기준 데이터 값이 같은(=) 데이터 외에 다양한 조건을 사용할 수 있다.
+
+CASE문의 기본 형식은 다음과 같다. 작성 형식 면에서 볼 때 WHEN이나 THEN, ELSE를 사용하는 CASE문은 DECODE 함수보다 더 프로그래밍 언어적인 표현 방식을 사용한다. 
+
+```SQL
+CASE [검사 대상이 될 열 또는 데이터, 연산이나 함수의 결과(선택)]
+	WHEN [조건1] THEN [조건1의 결과 값이 TRUE일 때, 반환할 결과]
+	...
+	WHEN [조건N] THEN [조건N의 결과 값이 TRUE일 때, 반환할 결과]
+	ELSE [위 조건1~조건N과 일치하는 경우가 없을 때 반환할 결과]
+END
+```
+
+**DECODE 함수와 같은 방식으로 CASE문 사용하기**
+
+DECODE 함수에서 사용한 조건과 같은 조건으로 데이터를 반환하려면 다음과 같이 사용할 수 있다.
+
+```SQL
+SELECT EMPNO, ENAME, JOB, SAL,
+	CASE JOB
+		WHEN 'MANAGER' THEN SAL*1.1
+		WHEN 'SALESMAN' THEN SAL*1.05
+		WHEN 'ANALIST' THEN SAL
+		ELSE SAL*1.03
+	END AS UPSAL
+FROM EMP;
+```
+
+![image-20250330090939714](C:\Users\bb\Desktop\OracleDB\assets\image-20250330090939714.png)
+
+**기준 데이터 없이 조건식만으로 CASE문 사용하기**
+
+CASE문은 DECODE 함수와는 달리 비교할 기준 데이터를 지정하지 않고 값이 같은 조건 이외의 조건도 사용할 수 있다. 오른쪽은 COMM열 값의 범위에 따라 각각 출력을 달리하고자 CASE문을 활용한 예이다. COMM 열 값이 NULL, COMM값이 0일 때 COMM 열 값이 0을 초과할 때 각각 다른 반환 데이터를 지정한다.
+
+```SQL
+SELECT EMPNO, ENAME, COMM,
+	CASE
+		WHEN COMM IS NULL THEN '해당 사항 없음'
+		WHEN COMM = 0 THEN '수당 없음'
+		WHEN COMM > 0 THEN '수당 : ' || COMM
+	END AS COMM_TEXT
+FROM EMP;
+```
+
+![image-20250330091634124](C:\Users\bb\Desktop\OracleDB\assets\image-20250330091634124.png)
+
+**기준 데이터 없이 조건식만으로 CASE문 사용하기**
+
+CASE문은 DECODE 함수와는 달리 비교할 기준 데이터를 지정하지 않고 값이 같은 조건 이외의 조건도 값이 같은 조건 이외의 조건도 사용할 수 있다. 오른쪽은 COMM 열 값의 범위에 따라 각각 출력을 달리하고자 CASE문을 활용한 예이다. COMM 열 값이 NULL, COMM 값이 0일 때 COMM 열 값이 0을 초과할 때 각각 다른 반환 데이터를 지정한다.
+
+```SQL
+SELECT EMPNO, ENAME, COMM,
+	CASE
+		WHEN COMM IS NULL THEN '해당사항 없음'
+		WHEN COMM = 0 THEN '수당없음'
+		WHEN COMM > 0 THEN '수당 : ' || COMM
+	END AS COMM_TEXT
+FROM EMP;
+```
+
+![image-20250330092211871](C:\Users\bb\Desktop\OracleDB\assets\image-20250330092211871.png)
+
+위 결과에서 알 수 있듯이 CASE문은 각 조건식의 TRUE, FALSE 여부만 검사하므로 기준 데이터가 없어도 사용이 가능하다. 지금까지 살펴본 연사나와 여러 함수를 함께 활용하면 더 복잡한 수준의 조건 검사도 가능하다. 다만 DECODE 함수와 CASE문은 모두 조건별로 동일한 자료형의 데이터를 반환해야 함을 알아야 한다. 
+
+cf) : 나머지 단일행 함수는 오라클 홈페이지의 공식 문서docs.oracle.com/cd/E11882_01/server.112/e41084/functions002.htm#SQLRF51178
 
 # 다중행 함수와 데이터 그룹화
 
 ## 다중행 함수
+
+다중행 함수(multiple-row function)는 여러 행을 바탕으로 하나의 결과 값을 도출해내기 위해 사용하는 함수이다.
+
+SUM 함수는 대표적인 다중행 함수이다.
+
+```SQL
+SELECT SUM(SAL)
+FROM EMP;
+```
+
+![image-20250330100416714](C:\Users\bb\Desktop\OracleDB\assets\image-20250330100416714.png)
+
+위 결과를 조금 더 자세히 살펴보면 다음과 같다.
+
+```SQL
+SELECT SAL
+FROM EMP;
+```
+
+![image-20250330100613908](C:\Users\bb\Desktop\OracleDB\assets\image-20250330100613908.png)
+
+▼▼▼
+
+```SQL
+SELECT SUM(SAL)
+FROM EMP;
+```
+
+![image-20250330100659203](C:\Users\bb\Desktop\OracleDB\assets\image-20250330100659203.png)
+
+SUM 함수는 SELECT문으로 조회된 행에 지정한 열 값을 모두 더한 값을 반환해 주는 함수이다. 즉 위와 같이 EMP 테이블을 구성하는 여러 행 중 SAL 열 값을 모두 합한 결과 값이 하나의 행으로 출력된다.
+
+
 
 ## GROUP BY절
 
