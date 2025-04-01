@@ -2624,13 +2624,781 @@ FROM EMP;
 
 SUM 함수는 SELECT문으로 조회된 행에 지정한 열 값을 모두 더한 값을 반환해 주는 함수이다. 즉 위와 같이 EMP 테이블을 구성하는 여러 행 중 SAL 열 값을 모두 합한 결과 값이 하나의 행으로 출력된다.
 
+이렇듯 다중행 함수는 여러 행이 입력되어 하나의 행으로 결과가 출력되는 특징을 가지고 있다. 이러한 특징으로 다중행 함수를 사용한 SELECT절에는 기본적으로 여러 행이 결과로 나올 수 있는 열(함수 : 연산자가 사용된 데이터도 포함)을 함께 사용할 수 없다. 즉 다음과 같은 SELECT문은 실행되지 못하고 오류가 발생한다.
 
+```SQL
+SELECT ENAME, SUM(SAL)
+FROM EMP;
+```
+
+```
+ORA-00937: 단일 그룹의 그룹 함수가 아닙니다
+
+https://docs.oracle.com/error-help/db/ora-00937/00937. 00000 -  "not a single-group group function"
+*Cause:    A SELECT list cannot include both a group function,
+           such as AVG, COUNT, MAX, MIN, SUM, STDDEV, or VARIANCE, and an
+           individual column expression, unless the individual column
+           expression was included in a GROUP BY clause.
+*Action:   Drop either the group function or the individual
+           column expression from the SELECT list or add a GROUP BY
+           clause that includes all individual column expressions listed.
+1행, 8열에서 오류 발생
+```
+
+ORA-00937 오류는 위와 같이 SELECT절에 다중행 함수를 사용하여 결과 값이 한 행으로 나온 데이터(SUM(SAL))와 여러 행이 나올 수 있는 데이터(ENAME)를 함께 명시했을 때 발생한다.
+
+다음은 자주 사용하는 다중행 함수이다. 
+
+| 함수         | 예시                                                         | 설명                                                         |
+| ------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **AVG**      | `SELECT AVG(salary) FROM employees;`                         | 지정된 열의 평균값(산술 평균)을 계산한다.                    |
+| **COUNT**    | `SELECT COUNT(*) FROM orders WHERE status = 'completed';`    | 행의 개수를 세거나, 특정 조건에 맞는 값의 개수를 반환한다.   |
+| **MAX**      | `SELECT MAX(salary) FROM employees;`                         | 지정된 열에서 가장 큰 값을 반환한다.                         |
+| **MIN**      | `SELECT MIN(salary) FROM employees;`                         | 지정된 열에서 가장 작은 값을 반환한다.                       |
+| **SUM**      | `SELECT SUM(sales_amount) FROM sales WHERE year = 2025;`     | 지정된 열의 값들을 모두 더한 합계를 반환한다.                |
+| **STDDEV**   | `SELECT STDDEV(salary) FROM employees WHERE department_id = 10;` | 지정된 열의 표준편차(Standard Deviation)를 반환한다.         |
+| **VARIANCE** | `SELECT VARIANCE(salary) FROM employees WHERE department_id = 10;` | 지정된 열의 분산(Variance)을 계산하여 데이터 분포의 퍼짐 정도를 확인한다. |
+
+### SUM 함수
+
+```SQL
+SUM([DISTINCT, ALL 중 하나를 선택하거나 아무 값도 지정하지 않음(선택)]
+    [합계를 구할 열이나 연산자, 함수를 사용한 데이터(필수)])
+```
+
+그리고 SUM 함수를 분석하는 용도로 사용한다면 다음과 같이 함수를 작성한 후 OVER절을 사용할 수도 있다.
+
+```SQL
+SUM([DISTINCT, ALL 중 하나를 선택하거나 아무 값도 지정하지 않음(선택)]
+    [합계를 구할 열이나 연산자, 함수를 사용한 데이터(필수)])
+OVER(분석을 위한 여러 문법을 지정)(선택)
+```
+
+OVER절을 사용하는 방식은 좀 더 깊이 있게 데이터를 분석하는 경우에 한해 사용하므로 지금은 오른쪽의 SELECT문처럼 사용한 예제와 같은 방식만 기억한다.
+
+```SQL
+SELECT SUM(COMM)
+FROM EMP;
+```
+
+![image-20250330103057380](C:\Users\bb\Desktop\OracleDB\assets\image-20250330103057380.png)
+
+위의 추가 수당 열은 NULL이 존재하는 열이다. 덧셈 연산만으로 합계를 구했다면 결과는 NULL이 나왔을 것이다. 하지만 SUM 함수는 NULL 데이터는 제외하고 합계를 구하므로 별다른 문제없이 결과가 출력되는 것을 알 수 있다.
+
+**SUM 함수와 DISTINCT, ALL 함께 사용하기**
+
+SUM 함수를 작성할 때 생략 가능 옵션 DISTINCT, ALL을 사용한 결과를 비교해보겠다. SAL열을 지정하여 다음 SELECT문의 결과를 확인한다. 
+
+```SQL
+SELECT SUM(DISTINCT SAL),
+	   SUM(ALL SAL),
+	   SUM(SAL)
+FROM EMP;
+```
+
+![image-20250330111201320](C:\Users\bb\Desktop\OracleDB\assets\image-20250330111201320.png)
+
+위의 결과에서 알 수 있듯이 ALL을 사용한 결과와 아무 옵션을 지정하지 않은 SUM 함수의 결과는 같다. DISTINCT를 지정한 SUM 함수의 결과 값은 다르게 출력되는데, SUM 함수에 DISTINCT를 지정하면 같은 결과 값을 가진 데이터는 합계에서 한 번만 사용되기 때문이다. 즉 중복 데이터는 제외하고 계산한다. 하지만 일반적으로 합계를 구할 때 같은 값을 제외하는 경우는 그리 많지 않으므로 보통은 SUM(데이터)처럼 간단한 형식을 주로 사용한다.
+
+### 데이터 개수를 구해주는 COUNT 함수
+
+COUNT 함수는 데이터 개수를 출력하는 데 사용한다. COUNT 함수에 *를 사용하면 SELECT문의 결과 값으로 나온 행 데이터의 개수를 반환해 준다.
+
+```SQL
+COUNT([DISTINCT, ALL 중 하나를 선택하거나 아무 값도 지정하지 않음(선택)],
+      [개수를 구할 열이나 연산자, 함수를 사용한 데이터(필수)])
+OVER(분석을 위한 여러 문법 지정)(선택)
+```
+
+SUM 함수에서와 마찬가지로 DISTINCT나 ALL을 사용하여 특정 데이터 또는 열을 지정할 수도 있다. 이 방식은 옵션에 따라 지정한 데이터 중복을 제거하거나 허용하여 데이터 개수를 반환한다. 옵션을 지정하지 않았을 때는 중복을 허용하여 결과 값을 반환하는 ALL을 기본으로 한다. 
+
+```SQL
+SELECT COUNT(*)
+	FROM EMP;
+```
+
+![image-20250330111937728](C:\Users\bb\Desktop\OracleDB\assets\image-20250330111937728.png)
+
+```SQL
+SELECT COUNT(*)
+FROM EMP
+WHERE DEPTNO = 30;
+```
+
+![image-20250330112037271](C:\Users\bb\Desktop\OracleDB\assets\image-20250330112037271.png)
+
+위와 같이 특정 조건을 만족하는 데이터를 COUNT 함수와 함께 사용한 결과 값은 다양한 분야에서 활용할 수 있다. 예를 들어 특정 회원이 작성한 총 글 수, 댓글 수, 글에서 받은 찬성 수, 반대 수 등을 조합하여 회원 등급이나 레벨 등을 관리할 수 있다. 또는 웹 쇼핑몰에서 어떤 상품이 많이 구매되었는지 화면의 어느 위치에 있는 항목이 자주 선택되었는지 등을 분석할 때도 활용할 수 있다.
+
+**COUNT 함수와 DISTINCT, ALL 함께 사용하기**
+
+```SQL
+SELECT COUNT(DISTINCT SAL),
+	   COUNT(ALL SAL),
+	   COUNT(SAL)
+FROM EMP;
+```
+
+![image-20250330112349503](C:\Users\bb\Desktop\OracleDB\assets\image-20250330112349503.png)
+
+다음 예제에서 COUNT 함수를 사용하면 추가 수당 열처럼 NULL이 데이터로 포함되어 있을 경우, NULL데이터는 반환 개수에서 제외된다. 
+
+```SQL
+SELECT COUNT(COMM)
+FROM EMP;
+```
+
+```SQL
+SELECT COUNT(COMM)
+FROM EMP
+WHERE COMM IS NOT NULL;
+```
+
+![image-20250330112558059](C:\Users\bb\Desktop\OracleDB\assets\image-20250330112558059.png)
+
+### 최댓값과 최솟값을 구하는 MAX, MIN 함수
+
+MAX 함수와 MIN 함수는 단어 의미 그대로 입력 데이터 중 최댓값과 최솟값을 반환하는 함수이다.
+
+```SQL
+MAX([DISTINCT, ALL 중 하나를 선택하거나 아무 값도 지정하지 않음(선택)],
+    [최댓값을 구할 열이나 연산자, 함수를 사용한 데이터(필수)])
+OVER(분석을 위한 여러 문법 지정)(선택)
+```
+
+MAX, MIN 함수는 데이터 중복 제거와 무관하게 같은 결과 값을 반환하기 때문에 DISTINCT나 ALL을 지정하지는 않는다.
+
+```SQL
+SELECT MAX(SAL)
+FROM EMP
+WHERE DEPTNO = 10;
+```
+
+![image-20250330112929016](C:\Users\bb\Desktop\OracleDB\assets\image-20250330112929016.png)
+
+```SQL
+SELECT MIN(SAL)
+FROM EMP
+WHERE DEPTNO = 10;
+```
+
+![image-20250330113011055](C:\Users\bb\Desktop\OracleDB\assets\image-20250330113011055.png)
+
+**날짜 데이터에 MAX, MIN 함수 사용하기**
+
+오라클 데이터베이스에서는 날짜 및 문자 데이터 역시 크기 비교가 가능하다. 그렇기에 날짜에도 MAX 함수, MIN 함수를 사용할 수 있다. 
+
+```SQL
+SELECT MAX(HIREDATE)
+FROM EMP
+WHERE DEPTNO = 20;
+```
+
+![image-20250330113201831](C:\Users\bb\Desktop\OracleDB\assets\image-20250330113201831.png)
+
+```SQL
+SELECT MIN(HIREDATE)
+FROM EMP
+WHERE DEPTNO = 20;
+```
+
+![image-20250330113243423](C:\Users\bb\Desktop\OracleDB\assets\image-20250330113243423.png)
+
+### 평균 값을 구하는 AVG 함수
+
+AVG 함수는 입력 데이터의 평균 값을 구하는 함수이다. 숫자 또는 숫자로 암시적 형 변환이 가능한 데이터만 사용할 수 있다. 
+
+```SQL
+AVG([DISTINCT, ALL 중 하나를 선택하거나 아무 값도 지정하지 않음(선택)],
+    [평균 값을 구할 열이나 연산자, 함수를 사용한 데이터(필수)])
+OVER(분석을 위한 여러 문법을 지정)(선택)
+```
+
+```SQL
+SELECT AVG(SAL)
+FROM EMP
+WHERE DEPTNO = 30;
+```
+
+![image-20250330113503513](C:\Users\bb\Desktop\OracleDB\assets\image-20250330113503513.png)
+
+```SQL
+SELECT AVG(DISTINCT SAL)
+FROM EMP
+WHERE DEPTNO = 30;
+```
+
+![image-20250330113631481](C:\Users\bb\Desktop\OracleDB\assets\image-20250330113631481.png)
+
+### 표준 편차를 구하는 STDDEV 함수
+
+STDDEV 함수는 입력 데이터의 표준 편차(Standard Deviation)를 계산하는 함수이다. 데이터의 값들이 평균에서 얼마나 흩어져 있는지를 측정합니다. 숫자 또는 숫자로 암시적 형 변환이 가능한 데이터만 사용할 수 있다.
+
+```SQL
+STDDEV([DISTINCT, ALL 중 하나를 선택하거나 아무 값도 지정하지 않음(선택)],
+       [표준 편차를 구할 열이나 연산자, 함수를 사용한 데이터(필수)])
+OVER(분석을 위한 여러 문법을 지정)(선택)
+```
+
+```SQL
+SELECT STDDEV(SAL)
+FROM EMP
+WHERE DEPTNO = 30;
+```
+
+```SQL
+SELECT STDDEV(DISTINCT SAL)
+FROM EMP
+WHERE DEPTNO = 30;
+```
+
+### 분산 값을 구하는 VARIANCE 함수
+
+VARIANCE 함수는 입력 데이터의 분산(Variance)을 계산하는 함수입니다. 데이터 값들이 평균에서 얼마나 흩어져 있는지를 제곱 값으로 계산하여 나타냅니다. 숫자 또는 숫자로 암시적 형 변환이 가능한 데이터만 사용할 수 있습니다.
+
+```SQL
+VARIANCE([DISTINCT, ALL 중 하나를 선택하거나 아무 값도 지정하지 않음(선택)],
+         [분산 값을 구할 열이나 연산자, 함수를 사용한 데이터(필수)])
+OVER(분석을 위한 여러 문법을 지정)(선택)
+```
+
+```SQL
+SELECT VARIANCE(SAL)
+FROM EMP
+WHERE DEPTNO = 30;
+```
+
+```SQL
+SELECT VARIANCE(DISTINCT SAL)
+FROM EMP
+WHERE DEPTNO = 30;
+```
 
 ## GROUP BY절
 
+앞에서 살펴본 다중행 함수는 지정 테이블의 데이터를 가공하여 하나의 결과 값만 출력했다. 그렇기에 부서를 의미하는 부서 번호, 즉 DEPTNO 열 값별로 급여의 평균 값을 구하려면 각 부서 평균 값을 구하기 위해 SELECT문을 다음과 같이 하나하나 제작해야 한다.
+
+```SQL
+SELECT AVG(SAL) FROM EMP WHERE DEPTNO = 10;
+SELECT AVG(SAL) FROM EMP WHERE DEPTNO = 20;
+SELECT AVG(SAL) FROM EMP WHERE DEPTNO = 30;
+...
+```
+
+이렇게 각 부서별 평균 급여를 구하기 위해 제작한 각 SELECT문의 겨리과 값을 하나로 통합해서 보려면 집합 연산자를 다음과 같이 활용할 수 있다.
+
+```SQL
+SELECT AVG(SAL), '10' AS DEPTNO FROM EMP WHERE DEPTNO = 10
+UNION ALL
+SELECT AVG(SAL), '20' AS DEPTNO FROM EMP WHERE DEPTNO = 20
+UNION ALL
+SELECT AVG(SAL), '30' AS DEPTNO FROM EMP WHERE DEPTNO = 30;
+```
+
+![image-20250330114424527](C:\Users\bb\Desktop\OracleDB\assets\image-20250330114424527.png)
+
+위에서 다중행 함수인 AVG 함수 옆에는 부서 코드 열을 바로 붙일 수 없으므로 10, 20, 30을 직접 작성하여 별칭을 준 것을 눈여겨본다. 필요에 따라 이런 식으로 데이터를 강제로 넣어 결과 열에 명시하기도 한다.
+
+하지만 위와 같은 방식은 한눈에 보기에도 번거로운 방법일 뿐만 아니라 이후에 특정 부서를 추가하거나 삭제할 때마다 SQL문을 수정해야 하므로 바람직하지 않다.
+
+### GROUP BY절의 기본 사용법
+
+여러 데이터에서 의미 있는 하나의 결과를 특정 열 값별로 묶어서 출력할 때 데이터를 '그룹화'한다고 표현한다. SELECT문에서는 GROUP BY절을 작성하여 데이터를 그룹화할 수 있는데 다음과 같이 순서에 맞게 작성하며 그룹으로 묶을 기준 열을 지정한다.
+
+```SQL
+SELECT [조회할 열1 이름], [열2 이름], ... , [열N 이름]
+FROM   [조회할 테이블 이름]
+WHERE  [조회할 행을 선별하는 조건식]
+GROUP BY [그룹화할 열을 지정(여러 개 지정 가능)]
+ORDER BY [정렬하려는 열 지정]
+```
+
+```SQL
+SELECT AVG(SAL), DEPTNO
+FROM EMP
+GROUP BY DEPTNO;
+```
+
+![image-20250330120155588](C:\Users\bb\Desktop\OracleDB\assets\image-20250330120155588.png)
+
+```SQL
+SELECT DEPTNO, JOB, AVG(SAL)
+FROM EMP
+GROUP BY DEPTNO, JOB
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250330120258894](C:\Users\bb\Desktop\OracleDB\assets\image-20250330120258894.png)
+
+### GROUP BY절을 사용할 때 유의점
+
+GROUP BY절을 사용하여 출력 데이터를 그룹화할 경우 유의점이 있는데 바로 다중행 함수를 사용하지 않은 일반 열은 GROUP BY절에 명시하지 않으면 SELECT절에서 사용할 수 없다는 것이다. 다음과 같이 GROUP BY절에 명시하지 않은 ENAME 열을 출력하도록 작성한 SELECT문을 실행해본다.
+
+```SQL
+SELECT ENAME, DEPTNO, AVG(SAL)
+FROM EMP
+GROUP BY DEPTNO;
+```
+
+```
+ORA-00979: GROUP BY 표현식이 아닙니다.
+
+https://docs.oracle.com/error-help/db/ora-00979/00979. 00000 -  "%s: must appear in the GROUP BY clause or be used in an aggregate function"
+*Cause:    The specified expression was not part of either the GROUP BY
+           clause, an aggregate function, or a constant but appeared in a part
+           of the query that is processed after the GROUP BY clause, such as
+           the SELECT clause, the ORDER BY clause, or the HAVING clause.
+*Action:   Add the expression to the GROUP BY clause or add an
+           aggregate function to specify which value of the expression
+           to use for each group. Ensure that any columns in the SELECT list
+           that are not part of an aggregate function are present in the
+           GROUP BY clause.
+*Params:   1) expression
+           clause.
+1행, 8열에서 오류 발생
+```
+
+위를 보면 결과가 출력되지 않고 오류가 발생한다. DEPTNO를 기준으로 그룹화되어 DEPTNO열과 AVG(SAL) 열은 한 행으로 출력되지만, ENAME 열은 여러 행으로 구성되어 각 열별 데이터 수가 달라져 출력이 불가능해진다. 
+
+앞에서 다중행 함수를 처음 소개할 때 발생한 ORA-00937 오류와 비슷한 원인이다. GROUP BY절을 사용한 그룹화는 그룹화된 열 외에 일반 열을 SELECT절에 명시할 수 없다. 
+
 ## HAVING절
 
+HAVING절은 SELECT문에 GROUP BY절이 존재할 때만 사용할 수 있다. 그리고 GROUP BY절을 통해 그룹화된 결과 값의 범위를 제한하는 데 사용한다. 각 부서의 직책별 평균 급여를 구하되 그 평균 급여가 2000 이상인 그룹만 출력하려면 다음과 같이 SELECT문에 GROUP BY절과 HAVING절을 사용하면 된다.
+
+```SQL
+SELECT DEPTNO, JOB, AVG(SAL)
+FROM EMP
+GROUP BY DEPTNO, JOB
+HAVING AVG(SAL) >= 2000
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250330152024040](C:\Users\bb\Desktop\OracleDB\assets\image-20250330152024040.png)
+
+HAVING절을 추가했을 때의 결과를 살펴보면, HAVING절을 통해 AVG(SAL) 값이 2000을 넘지 않은 그룹의 결과는 출력되지 않음을 알 수 있다.
+
+### HAVING절의 기본 사용법
+
+```SQL
+SELECT [조회할 열1 이름], [열2 이름], ... , [열N 이름]
+FROM   [조회할 테이블 이름]
+WHERE  [조회할 행을 선별하는 조건식]
+GROUP BY [그룹화할 열 지정(여러 개 지정 가능)]
+HAVING   [출력 그룹을 제한하는 조건식]
+ORDER BY [정렬하려는 열 지정];
+```
+
+기본 형식에서 알 수 있듯이 HAVING절은 GROUP BY절이 존재할 경우 GROUP BY절 바로 다음에 작성한다. 그리고 GROUP BY절과 마찬가지로 별칭은 사용할 수 없다.
+
+### HAVING절을 사용할 때 유의점
+
+HAVING절도 WHERE절처럼 지정한 조건식이 참인 결과만 출력한다는 점에서 비슷한 부분이 있다. 하지만 WHERE절은 출력 대상 행을 제한하고, HAVING절은 그룹화된 대상을 출력에서 제한하므로 쓰임새는 전혀 다르다.
+
+만약 출력 결과를 제한하기 위해 HAVING을 사용하지 않고 조건식을 WHERE절에 명시하면 다음과 같이 SELECT문이 실행되지 않고 오류가 발생한다.
+
+```SQL
+SELECT DEPTNO, JOB, AVG(SAL)
+FROM EMP
+WHERE AVG(SAL) >= 2000
+GROUP BY DEPTNO, JOB
+ORDER BY DEPTNO, JOB;
+```
+
+```
+ORA-00934: 그룹 함수는 허가되지 않습니다
+
+https://docs.oracle.com/error-help/db/ora-00934/00934. 00000 -  "group function is not allowed here"
+*Cause:    One of the group functions, such as AVG, COUNT, MAX,
+           MIN, SUM, STDDEV, or VARIANCE, was used in a WHERE or GROUP BY
+           clause.
+*Action:   Remove the group function from the WHERE or GROUP BY
+           clause. The desired result may be achieved by including the
+           function in a subquery or HAVING clause.
+3행, 7열에서 오류 발생
+```
+
+출력 행을 제한하는 WHERE절에서는 그룹화된 데이터 AVG(SAL)를 제한하는 조건식을 지정할 수 없다.
+
+### WHERE절과 HAVING절의 차이점
+
+처음 HAVING절을 사용한 SELECT문에 WHERE절의 조건을 추가하여 실행한다.
+
+WHERE절을 함께 지정한 새로운 SELECT문이다. 
+
+```SQL
+SELECT DEPTNO, JOB, AVG(SAL)
+FROM EMP
+GROUP BY DEPTNO, JOB
+HAVING AVG(SAL) >= 2000
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250330153206519](C:\Users\bb\Desktop\OracleDB\assets\image-20250330153206519.png)
+
+```SQL
+SELECT DEPTNO, JOB, AVG(SAL)
+FROM EMP
+WHERE SAL <= 3000
+GROUP BY DEPTNO, JOB
+HAVING AVG(SAL) >= 2000
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250330153306848](C:\Users\bb\Desktop\OracleDB\assets\image-20250330153306848.png)
+
+```SQL
+SELECT DEPTNO, JOB, AVG(SAL)
+FROM EMP
+WHERE SAL <= 3000
+GROUP BY DEPTNO, JOB
+HAVING AVG(SAL) >= 2000
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250330160228650](C:\Users\bb\Desktop\OracleDB\assets\image-20250330160228650.png)
+
+WHERE절을 추가한 SELECT문에서는 10번 부서의 PRESIDENT 데이터가 출력되지 않는다. 이는 WHERE절이 GROUP BY절과 HAVING절을 사용한 데이터 그룹화보다 먼저 출력 대상이 될 행을 제한하기 때문이다. 즉, WHERE절 단계에서 개별 행 단위로 필터링이 이루어진 후 GROUP BY절에서 그룹화한다.
+
+추가된 WHERE절에서는 급여가 3000 이하인 조건식을 명시한다. 따라서 GROUP BY절을 사용해 부서벌(DEPTNO), 직책별(JOB) 데이터를 그룹화하기 전에 급여가 3000 이하가 아닌 데이터, 즉 3000을 초과한 급여를 받은 사원의 데이터를 결과에서 먼저 제외하므로 그룹화 대상에 속하지도 못하게 된다. 따라서 다음과 같이 WHERE절을 실행한 후에 나온 결과 데이터 GROUP BY절과 HAVING절의 그룹화 대상 데이터가 된다.
+
+```SQL
+SELECT DEPTNO, JOB, SAL
+FROM EMP
+WHERE SAL <= 3000
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401090637295](C:\Users\bb\Desktop\OracleDB\assets\image-20250401090637295.png)
+
+이 결과에서 GROUP BY절로 그룹화가 진행되고 HAVING절에서 그룹을 제한하므로 그룹이 만들어지기 전에 걸러진 데이터는 그룹화가 진행되지 않는다.
+
+예를 들어 연예인을 배출해 내는 엔터테인먼트 회사에는 여러 연예인 지망생들이 속해 있다. 그리고 그 연예인 지망생들을 조합하여 새로운 여성 아이돌 그룹을 결성하려는 경우를 생각하면, 남성 연예인 지망생은 처음부터 고려 대상에서 제외될것이다. 이와 유사하게 GROUP BY절로 그룹을 나누는 대상 데이터를 처음부터 제외할 목적이라면 WHERE절을 함께 사용한다. 즉 GROUP BY절을 수행하기 전에 WHERE절의 조건식으로 출력 행의 제한이 먼저 이루어진다는 것이다.
+
 ## 그룹화와 관련된 여러 함수
+
+### ROLLUP, CUBE, GROUPING SETS 함수
+
+**ROLLUP, CUBE 함수**
+
+ROLLUP, CUBE, GROUPING SETS 함수는 GROUP BY절에 지정할 수 있는 특수 함수이다. ROLLUP 함수와 CUBE 함수는 그룹화 데이터의 집계 결과를 출력하는 데 사용한다.
+
+```SQL
+SELECT [조회할 열1 이름], ... , [열N 이름]
+FROM   [조회할 테이블 이름]
+WHERE  [조회할 행을 선별하는 조건식]
+GROUP BY ROLLUP [그룹화 열 지정(여러 개 지정 가능)];
+```
+
+```SQL
+SELECT [조회할 열1 이름], ... , [열N이름]
+FROM   [조회할 테이블 이름]
+WHERE  [조회할 행을 선별하는 조건식]
+GROUP BY CUBE [그룹화 열 지정(여러 개 지정 가능)];
+```
+
+```SQL
+SELECT DEPTNO, JOB, COUNT(*), MAX(SAL), SUM(SAL), AVG(SAL)
+FROM EMP
+GROUP BY DEPTNO, JOB
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401095703829](C:\Users\bb\Desktop\OracleDB\assets\image-20250401095703829.png)
+
+```SQL
+SELECT DEPTNO, JOB, COUNT(*), MAX(SAL), SUM(SAL), AVG(SAL)
+FROM EMP
+GROUP BY ROLLUP(DEPTNO, JOB)
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401100506543](C:\Users\bb\Desktop\OracleDB\assets\image-20250401100506543.png)
+
+ROLLUP 함수는 명시한 열을 소그룹부터 대그룹의 순서로 각 그룹별 집계 결과를 출력하고 마지막에 총 데이터의 집계 결과를 출력한다. 즉 각 부서의 직책별 사원수, 최고 급여, 급여 합, 평균 급여를 출력한 후에 각 부서별 결과를 출력하고 마지막에 테이블 전체 데이터를 대상으로 한 사원 수, 최고 급여, 급여 합, 평균 급여를 출력한다. ROLLUP 함수는 명시한 열에 한하여 집계 결과가 출력된다. 이는 GROUP BY와 함께 작동하여, 사용자가 지정한 열에 기반한 전체 집계 값 및 중간 요액 행을 자동으로 생성한다. 따라서 ROLLUP 함수는 어떤 기준으로 그룹화하고 요약 데이터를 만들 것인지를 지정하는 역할을 하며 그룹 함수를 지정할 수 없다(SELECT 절에서 집계 함수를 명시적으로 사용할 수 없다는 말이다).
+
+```SQL
+SELECT DEPTNO, JOB, COUNT(*), MAX(SAL), SUM(SAL), AVG(SAL)
+FROM EMP
+GROUP BY CUBE(DEPTNO, JOB)
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401101652314](C:\Users\bb\Desktop\OracleDB\assets\image-20250401101652314.png)
+
+위와 같이 CUBE 함수는 ROLLUP 함수를 사용했을 때보다 좀 더 많은 결과가 나온다. 여기서 주의 깊게 확인할 부분은 직책별 결과가 함께 출력되고 있는 부분인데, 이렇듯 CUBE 함수는 지정한 모든 열에서 가능한 조합의 결과를 모두 출력한다. 앞의 실습에서 ROLLUP 함수와 CUBE 함수를 이해하기 위해 두 열(DEPTNO, JOB)만 그룹화하여 사용했다. 그룹화 순서대로 출력해 주는 ROLLUP 함수는 지정한 열 수에 따라 다음과 같이 결과 값이 조합된다. 즉 N개의 열을 지정하면 기본적으로 N+1개 조합이 출력된다고 생각하면 된다.
+
+```
+ROLLUP(A, B, C)
+1. A 그룹별 B 그룹별 C 그룹에 해당하는 결과 출력
+2. A 그룹별 B 그룹에 해당하는 결과 출력
+3. A 그룹에 해당하는 결과 출력
+4. 전체 데이터 결과 출력
+```
+
+CUBE 함수는 지정한 모든 열의 조합을 사용하므로 다음과 같은 결과가 출력된다.
+
+```
+CUBE(A, B, C)
+1. A 그룹별 B 그룹별 C 그룹에 해당하는 결과 출력
+2. A 그룹별 B 그룹의 결과 출력
+3. B 그룹별 C 그룹의 결과 출력
+4. A 그룹별 C 그룹의 결과 출력
+5. A 그룹 결과
+6. B 그룹 결과
+7. C 그룹 결과
+8. 전체 데이터 결과
+```
+
+CUBE 함수에 N개 열을 지정하면 2^N개 조합이 출력된다. 그러므로 두 함수는 지정한 열이 많을수록 출력될 조합이 많아진다. 특히 CUBE 함수는 제곱수로 조합 경우의 수가 올라가므로 감당하기 어려울 정도의 기하급수적인 증가가 일어난다. 이를 방지하기 위해 필요한 조합의 출력만 보려면 ROLLUP 함수와 CUBE 함수에 그룹화 열 중 일부만을 지정할 수도 있다. 이를 Partial Rollup/Cube, 즉 부분 또는 분할 ROLLUP, CUBE라고 한다. 
+
+```SQL
+SELECT DEPTNO, JOB, COUNT(*)
+FROM EMP
+GROUP BY DEPTNO, ROLLUP(JOB);
+```
+
+![image-20250401112834551](C:\Users\bb\Desktop\OracleDB\assets\image-20250401112834551.png)
+
+```SQL
+SELECT DEPTNO, JOB, COUNT(*)
+FROM EMP
+GROUP BY JOB, ROLLUP(DEPTNO);
+```
+
+![image-20250401112932487](C:\Users\bb\Desktop\OracleDB\assets\image-20250401112932487.png)
+
+두 SELECT문의 결과 값은 각각 10번 부서에 존재하는 각 직책별 사원 수와 각 부서별 사원 수의 합, 그리고 특정 직책인 사람들의 부서별 인원수와 각 직책별 사원 수의 합 형태로 다르게 출력된다.
+
+**GROUPING SETS 함수**
+
+GROUPING SETS 함수는 같은 수준의 그룹화 열이 여러 개일 때 각 열별 그룹화를 통해 결과 값을 출력하는 데 사용한다.
+
+```SQL
+SELECT [조회할 열1 이름], [열2 이름], ... , [열N 이름]
+FROM   [조회할 테이블 이름]
+WHERE  [조회할 행을 선별하는 조건식]
+GROUP BY GROUPING SETS [그룹화 열 지정(여러 개 지정 가능)];
+```
+
+ROLLUP과 CUBE 함수를 '특정 부서 내 직책별 인원수'처럼 열을 대그룹, 소그룹과 같이 계층적으로 그룹화하여 데이터를 집계했다. GROUPING SETS 함수는 부서별 인원수, 직책별 인원수의 결과 값을 하나의 결과로 출력할 수 있다. 즉 지정한 모든 열은 각각 대그룹으로 처리하여 출력하는 것이다.
+
+```SQL
+SELECT DEPTNO, JOB, COUNT(*)
+FROM EMP
+GROUP BY GROUPING SETS(DEPTNO, JOB)
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401114203305](C:\Users\bb\Desktop\OracleDB\assets\image-20250401114203305.png)
+
+SELECT문의 실행 결과를 보면 그룹화를 위해 지정한 열이 계층적으로 분류되지 않고 각각 따로 그룹화한 후 연산을 수행했음을 알 수 있다.
+
+### 그룹화 함수
+
+그룹화 함수는 데이터 자체의 가공이나 특별한 연산 기능을 수행하지는 않지만 그룹화 데이터의 식별이 쉽고 가독성을 높이기 위한 목적으로 사용한다. 여기에서는 GROUPING 함수와 GROUPING_ID 함수를 살펴본다.
+
+**GROUPING 함수**
+
+GROUPING 함수는 ROLLUP 또는 CUBE 함수를 사용한 GROUP BY절에 그룹화 대상으로 지정한 열이 그룹화된 상태로 결과가 집계되었는지 확인하는 데 사용한다. GROUP BY절에 명시된 열 중 하나를 지정할 수 있다.
+
+```SQL
+SELECT [조회할 열1 이름], [열2 이름], ... , [열N 이름]
+GROUPING [GROUP BY절에 ROLLUP 또는 CUBE에 명시한 그룹화 할 열 이름]
+FROM [조회할 테이블 이름]
+WHERE [조회할 행을 선별하는 조건식]
+GROUP BY ROLLUP 또는 CUBE [그룹화할 열];
+```
+
+```SQL
+SELECT DEPTNO, JOB, COUNT(*), MAX(SAL), SUM(SAL), AVG(SAL),
+	   GROUPING(DEPTNO),
+	   GROUPING(JOB)
+	   FROM EMP
+GROUP BY CUBE(DEPTNO, JOB)
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401114837752](C:\Users\bb\Desktop\OracleDB\assets\image-20250401114837752.png)
+
+실행 결과를 살펴보면 GROUPING 함수에 DEPTNO와 JOB 열을 각각 적용한 결과가 다음과 같이 0, 1로 출력되는 것을 알 수 있다. 여기에서 0은 GROUPING 함수에 지정한 열이 그룹화되었음을 의미하고 1이 나왔다는 것은 그룹화되지 않은 데이터를 의미한다. 예를 들어 결과에 첫 번째 행은 10번 부서의 CLERK 직책인 사원 정보를 그룹화하여 보여 주고 있는데 이때 GROUPING(DEPTNO), GROUPING(JOB)은 모두 0을 출력한다. 즉 DEPTNO, JOB은 두 열을 모두 그룹화하여 집계한 결과라는 의미이다.
+
+반면에 네 번째 행은 직책과 상관없이 10번 부서의 사원 정보를 그룹화하고 있는 데이터이다. 이때 GROUPING(DEPTNO) 값은 0, GROUPING(JOB) 값은 1이 출력된다. DEPTNO 열로는 그룹화하고 JOB 열로는 그룹화하지 않은 상태, 즉 10번 부서에 속한 모든 직급 사원들의 집계 결과가 나온 것이다. 그리고 맨 마지막 행의 두 데이터가 모두 1, 1인 경우는 DEPTNO, JOB 두 열 모두 그룹화하지 않은 상태, 모든 데이터의 집계 결과를 나타낸다.
+
+이렇게 GROUPING 함수의 결과 값을 0, 1로 구별하여 출력하면 현재 출력되는 데이터가 어떤 열의 그룹화를 통해 나온 것인지 알 수 있다. GROUPING 함수의 결과가 오직 0과 1로만 출력된다는 점을 고려하면 아래와 같이 해당 열의 그룹화 없이 ROLLUP 또는 CUBE 함수로 처리하여 표기할 수도 있다.
+
+```SQL
+SELECT DECODE(GROUPING(DEPTNO), 1, 'ALL_DEPT', DEPTNO) AS DEPTNO,
+	   DECODE(GROUPING(JOB), 1, 'ALL_JOB', JOB) AS JOB,
+	   COUNT(*), MAX(SAL), SUM(SAL), AVG(SAL)
+FROM EMP
+GROUP BY CUBE(DEPTNO, JOB)
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401115810146](C:\Users\bb\Desktop\OracleDB\assets\image-20250401115810146.png)
+
+**GROUPING_ID 함수**
+
+GROUPING_ID 함수는 GROUPING 함수와 마찬가지로 ROLLUP 또는 CUBE 함수로 연산할 때 특정 열이 그룹화되었는지를 출력하는 함수이다. 그룹화 여부를 검사할 열을 하나씩 지정하는 GROUPING 함수와 달리 GROUPING_ID 함수는 한 번에 여러 열을 지정할 수 있다.
+
+```SQL
+SELECT [조회할 열1 이름], [열2 이름], ... , [열N 이름]
+GROUPING_ID [그룹화 여부를 확인할 열(여러 개 지정 가능)]
+FROM [조회할 테이블 이름] WHERE [조회할 행을 선별하는 조건식]
+GROUP BY ROLLUP 또는 CUBE [그룹화 할 열];
+```
+
+GROUPING_ID 함수를 사용한 결과는 그룹화 비트 벡터(grouping bit vector) 값으로 나타낸다. GROUPING_ID(a, b)와 같이 열을 두 개 지정한다면 출력 결과는 다음과 같다.
+
+| 그룹화 된 열 | 그룹화 비트 벡터 | 최종 결과 |
+| ------------ | ---------------- | --------- |
+| a, b         | 0 0              | 0         |
+| a            | 0 1              | 1         |
+| b            | 1 0              | 2         |
+| 없음         | 1 1              | 3         |
+
+각 열의 그룹화 유무에 따라 0과 1이 결과 값으로 나오는 것은 GROUPING과 같다. 하지만 GROUPING_ID 함수는 한 번에 여러 개 열을 지정할 수 있으므로 지정한 열의 순서에 따라 0, 1 값이 하나씩 출력된다. 이렇게 0과 1로 구성된 그룹화 비트 벡터 값을 2진수로 보고 10진수로 바꾼 값이 최종 결과로 출력된다.
+
+```SQL
+SELECT DEPTNO, JOB, COUNT(*), SUM(SAL),
+	   GROUPING(DEPTNO),
+	   GROUPING(JOB),
+	   GROUPING_ID(DEPTNO, JOB)
+FROM EMP
+GROUP BY CUBE(DEPTNO, JOB)
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401121145643](C:\Users\bb\Desktop\OracleDB\assets\image-20250401121145643.png)
+
+### LISTAGG 함수
+
+LISTAGG 함수는 오라클 11G 버전부터 사용할 수 있는 함수이다. 그룹에 속해 있는 데이터를 가로로 나열할 때 사용한다. 
+
+```SQL
+SELECT ENAME
+FROM EMP
+WHERE DEPTNO = 10;
+```
+
+![image-20250401121321541](C:\Users\bb\Desktop\OracleDB\assets\image-20250401121321541.png)
+
+위와 마찬가지로 10번 부서 외에 다른 부서에도 사원 이름 데이터는 여러 개 존재한다. 하지만 GROUP BY절을 통해 DEPTNO 열을 그룹화해 버리면 ENAME 데이터는 GROUP BY절에 명시하지 않는 이상 SELECT절에 명시할 수 없다.
+
+```SQL
+SELECT DEPTNO, ENAME
+FROM EMP
+GROUP BY DEPTNO, ENAME;
+```
+
+![image-20250401121510402](C:\Users\bb\Desktop\OracleDB\assets\image-20250401121510402.png)
+
+위와 같이 DEPTNO, ENAME 열을 다음과 같이 모두 그룹화하여 출력하는 것도 한 방법이지만, 각 출력 정보에 비해 행이 너무 많아지기에 각 부서별 사원 이름을 가로로 나열해서 출력하고 싶을 수 있다. 이때 LISTAGG 함수가 좋은 대안이 된다.
+
+LISTAGG 함수의 기본 형식은 아래와 같다. 가로로 나열할 열을 지정하고 필요하다면 각 데이터 사이에 넣을 구분자를 지정할 수 있다. 그리고 가로로 출력할 데이터를 정렬할 수도 있다. 정렬은 기존 ORDER BY절과 사용법이 같다. 왼쪽부터 오른쪽 방향으로 지정한 정렬 옵션에 따라 데이터가 가지런히 나열된다.
+
+```SQL
+SELECT [조회할 열1 이름], [열2 이름], ... , [열N 이름]
+	   LISTAGG([나열할 열(필수)], [각 데이터를 구분하는 구분자(선택)])
+	   WITHIN GROUP(ORDER BY 나열할 열의 정렬 기준 열(선택))
+FROM   [조회할 테이블 이름]
+WHERE  [조회할 행을 선별하는 조건식];
+```
+
+```SQL
+SELECT DEPTNO,
+	   LISTAGG(ENAME, ', ')
+	   WITHIN GROUP(ORDER BY SAL DESC) AS ENAMES
+FROM EMP
+GROUP BY DEPTNO;
+```
+
+![image-20250401132430641](C:\Users\bb\Desktop\OracleDB\assets\image-20250401132430641.png)
+
+### PIVOT, UNPIVOT 함수
+
+PIVOT, UNPIVOT 함수는 오라클 11G부터 제공하며 PIVOT 함수는 기존 테이블 행을 열로 바꾸고 UNPIVOT 함수는 기존 테이블 열을 행으로 바꿔서 출력한다.
+
+```SQL
+SELECT DEPTNO, JOB, MAX(SAL)
+FROM EMP
+GROUP BY DEPTNO, JOB
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401132636424](C:\Users\bb\Desktop\OracleDB\assets\image-20250401132636424.png)
+
+이렇게 세로로만 나열되는 DEPTNO와 JOB 열 값을 PIVOT 함수를 사용하면 스프레드시트처럼 가로와 세로로 나누어 출력할 수도 있다.
+
+다음과 같이 SELECT문을 하나 작성한 후에 PIVOT 함수 내에서 실제 출력 데이터, 즉 다음 예제에서는 MAX(SAL)를 먼저 명시한다. 가로줄로 표기할 열을 FOR로 명시한 후에 IN 안에 출력하려는 열 데이터를 지정한다.
+
+```SQL
+SELECT *
+FROM(SELECT DEPTNO, JOB, SAL
+     FROM EMP)
+PIVOT(MAX(SAL)
+      FOR DEPTNO IN (10, 20, 30)
+     )
+ORDER BY JOB;
+```
+
+![image-20250401132951345](C:\Users\bb\Desktop\OracleDB\assets\image-20250401132951345.png)
+
+```SQL
+SELECT *
+	FROM(SELECT JOB, DEPTNO, SAL
+        	FROM EMP)
+PIVOT(MAX(SAL)
+      FOR JOB IN ('CLERK' AS CLERK,
+                  'SALESMAN' AS SALESMAN,
+                  'PRESIDENT' AS PRESIDENT,
+                  'MANAGER' AS MANSGER,
+                  'ANALYST' AS ANALYST)
+     )
+ORDER BY DEPTNO;
+```
+
+![image-20250401150651023](C:\Users\bb\Desktop\OracleDB\assets\image-20250401150651023.png)
+
+오라클 11G 이전 버전에는 PIVOT 기능이 없지만 이와 같은 결과가 나오도록 다음과 같이 SELECT문을 작성할 수 있다.
+
+```SQL
+SELECT DEPTNO,
+	MAX(DECODE(JOB, 'CLERT', SAL)) AS "CLERK",
+	MAX(DECODE(JOB, 'SALESMAN', SAL)) AS "SALESMAN",
+	MAX(DECODE(JOB, 'PRESIDENT', SAL)) AS "PRESIDENT",
+	MAX(DECODE(JOB, 'MANAGER', SAL)) AS "MANAGER",
+	MAX(DECODE(JOB, 'ANALYST', SAL)) AS "ANALYST"
+	FROM EMP
+GROUP BY DEPTNO
+ORDER BY DEPTNO;
+```
+
+![image-20250401152835264](C:\Users\bb\Desktop\OracleDB\assets\image-20250401152835264.png)
+
+UNPIVOT 함수는 PIVOT 함수와 반대 기능을 한다. UNPIVOT 함수는 SELECT문을 먼저 작성하고 출력 데이터(SAL)를 명시한 후 세로로 늘어뜨릴 가로 열을 FOR에 명시한다.
+
+```SQL
+SELECT *
+FROM(SELECT DEPTNO,
+        MAX(DECODE(JOB, 'CLERK', SAL)) AS "CLERK",
+        MAX(DECODE(JOB, 'SALESMAN', SAL)) AS "SALESMAN",
+        MAX(DECODE(JOB, 'PRESIDENT', SAL)) AS "PRESIDENT",
+        MAX(DECODE(JOB, 'MANAGER', SAL)) AS "MANAGER",
+        MAX(DECODE(JOB, 'ANALYST', SAL)) AS "ANALYST"
+            FROM EMP
+            GROUP BY DEPTNO
+            ORDER BY DEPTNO)
+UNPIVOT(
+    SAL FOR JOB IN (CLERK, SALESMAN, PRESIDENT, MANAGER, ANALYST))
+ORDER BY DEPTNO, JOB;
+```
+
+![image-20250401175202517](C:\Users\bb\Desktop\OracleDB\assets\image-20250401175202517.png)
+
+위의 결과를 보면 PIVOT 함수를 적용하기 전과 같이 출력되는 것을 알 수 있다.
+
+지금까지 다룬 함수 외에도 오라클에는 그룹화 관련하여 집계 함수, 분석 함수, 이전/이후 행을 가져오는 LAG, LEAD 함수, 값의 순위를 계산하는 RANK, DENSE_RANK 함수 등 많이 존재한다.
 
 # 조인
 
